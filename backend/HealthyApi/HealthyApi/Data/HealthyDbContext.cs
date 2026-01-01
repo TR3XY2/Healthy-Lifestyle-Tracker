@@ -26,12 +26,14 @@ namespace HealthyApi.Data
             builder.Entity<StepRecord>()
                 .HasOne(sr => sr.User)
                 .WithMany(u => u.StepRecords)
-                .HasForeignKey(sr => sr.UserId);
+                .HasForeignKey(sr => sr.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<WeightRecord>()
                 .HasOne(wr => wr.User)
                 .WithMany(u => u.WeightRecords)
-                .HasForeignKey(wr => wr.UserId);
+                .HasForeignKey(wr => wr.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
