@@ -3,6 +3,7 @@
 // </copyright>
 
 using HealthyApi.Data;
+using HealthyApi.Data.Seed;
 using HealthyApi.Models.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -42,5 +43,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    await RoleSeeder.SeedAsync(scope.ServiceProvider);
+}
 
 await app.RunAsync();
