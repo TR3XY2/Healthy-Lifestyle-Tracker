@@ -1,4 +1,4 @@
-﻿// <copyright file="StepsController.cs" company="PlaceholderCompany">
+﻿// <copyright file="WeightController.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -14,14 +14,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 [Route("api/[controller]")]
-[Authorize]
 [ApiController]
-public class StepsController : ControllerBase
+[Authorize]
+public class WeightController : ControllerBase
 {
     private readonly HealthyDbContext dbContext;
     private readonly UserManager<User> userManager;
 
-    public StepsController(HealthyDbContext dbContext, UserManager<User> userManager)
+    public WeightController(HealthyDbContext dbContext, UserManager<User> userManager)
     {
         this.dbContext = dbContext;
         this.userManager = userManager;
@@ -37,16 +37,16 @@ public class StepsController : ControllerBase
 
         var userId = this.userManager.GetUserId(this.User);
 
-        var steps = await this.dbContext.StepRecords
-            .Where(step => step.UserId == userId)
-            .OrderBy(step => step.Date)
+        var weights = await this.dbContext.WeightRecords
+            .Where(record => record.UserId == userId)
+            .OrderBy(record => record.Date)
             .ToListAsync();
 
-        return this.Ok(steps);
+        return this.Ok(weights);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Add(StepCreateDto stepRecordDto)
+    public async Task<IActionResult> Add(WeightCreateDto weightCreateDto)
     {
         if (!this.ModelState.IsValid)
         {
@@ -55,11 +55,11 @@ public class StepsController : ControllerBase
 
         var userId = this.userManager.GetUserId(this.User);
 
-        var record = new StepRecord
+        var record = new WeightRecord
         {
+            Date = weightCreateDto.date,
+            Weight = weightCreateDto.weight,
             UserId = userId!,
-            Date = stepRecordDto.date,
-            Steps = stepRecordDto.steps,
         };
 
         await this.dbContext.AddAsync(record);

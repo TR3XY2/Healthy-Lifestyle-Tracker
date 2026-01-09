@@ -6,5 +6,4 @@ namespace HealthyApi.DTOs.Steps;
 
 public record StepCreateDto(
     DateTime date,
-    int steps
-);
+    int steps);
