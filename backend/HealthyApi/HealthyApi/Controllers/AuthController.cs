@@ -51,6 +51,8 @@ public class AuthController : ControllerBase
             return this.BadRequest(result.Errors);
         }
 
+        await this.userManager.AddToRoleAsync(user, "User");
+
         return this.Ok();
     }
 
@@ -76,20 +78,24 @@ public class AuthController : ControllerBase
             return this.Unauthorized();
         }
 
-        var token = this.GenerateJwt(user);
+        var token = await this.GenerateJwtAsync(user);
 
         return this.Ok(token);
     }
 
-    private AuthResponseDto GenerateJwt(User user)
+    private async Task<AuthResponseDto> GenerateJwtAsync(User user)
     {
-        var claims = new[]
+        var roles = await this.userManager.GetRolesAsync(user);
+
+        var claims = new List<Claim>()
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id),
             new Claim(ClaimTypes.NameIdentifier, user.Id),
             new Claim(JwtRegisteredClaimNames.Email, user.Email!),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
+
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(this.configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing")));
 
