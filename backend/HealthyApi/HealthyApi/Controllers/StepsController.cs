@@ -5,6 +5,7 @@
 namespace HealthyApi.Controllers;
 
 using HealthyApi.Data;
+using HealthyApi.DTOs.Steps;
 using HealthyApi.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -37,5 +38,23 @@ public class StepsController : ControllerBase
             .ToListAsync();
 
         return this.Ok(steps);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Add(StepCreateDto stepRecordDto)
+    {
+        var userId = this.userManager.GetUserId(this.User);
+
+        var record = new StepRecord
+        {
+            UserId = userId!,
+            Date = stepRecordDto.date,
+            Steps = stepRecordDto.steps,
+        };
+
+        this.dbContext.StepRecords.Add(record);
+        await this.dbContext.SaveChangesAsync();
+
+        return this.Ok();
     }
 }
