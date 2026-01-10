@@ -5,5 +5,5 @@
 namespace HealthyApi.DTOs.Auth;
 
 public record AuthResponseDto(
-    string token,
-    DateTime expiresAt);
+    string Token,
+    DateTime ExpiresAt);

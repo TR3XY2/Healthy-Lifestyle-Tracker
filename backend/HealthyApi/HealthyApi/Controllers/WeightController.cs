@@ -30,12 +30,12 @@ public class WeightController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetHistory()
     {
-        if (!this.ModelState.IsValid)
-        {
-            return this.BadRequest(this.ModelState);
-        }
-
         var userId = this.userManager.GetUserId(this.User);
+
+        if (userId == null)
+        {
+            return this.Unauthorized();
+        }
 
         var weights = await this.dbContext.WeightRecords
             .Where(record => record.UserId == userId)
@@ -55,10 +55,15 @@ public class WeightController : ControllerBase
 
         var userId = this.userManager.GetUserId(this.User);
 
+        if (userId == null)
+        {
+            return this.Unauthorized();
+        }
+
         var record = new WeightRecord
         {
-            Date = weightCreateDto.date,
-            Weight = weightCreateDto.weight,
+            Date = weightCreateDto.Date,
+            Weight = weightCreateDto.Weight,
             UserId = userId!,
         };
 

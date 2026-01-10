@@ -5,5 +5,5 @@
 namespace HealthyApi.DTOs.Auth;
 
 public record LoginDto(
-    string email,
-    string password);
+    string Email,
+    string Password);

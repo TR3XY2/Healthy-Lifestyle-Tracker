@@ -40,11 +40,11 @@ public class AuthController : ControllerBase
 
         var user = new User
         {
-            Email = registerDto.email,
-            UserName = registerDto.email,
+            Email = registerDto.Email,
+            UserName = registerDto.Email,
         };
 
-        var result = await this.userManager.CreateAsync(user, registerDto.password);
+        var result = await this.userManager.CreateAsync(user, registerDto.Password);
 
         if (!result.Succeeded)
         {
@@ -64,14 +64,14 @@ public class AuthController : ControllerBase
             return this.BadRequest(this.ModelState);
         }
 
-        var user = await this.userManager.FindByEmailAsync(loginDto.email);
+        var user = await this.userManager.FindByEmailAsync(loginDto.Email);
 
         if (user == null)
         {
             return this.Unauthorized();
         }
 
-        var result = await this.signInManager.CheckPasswordSignInAsync(user, loginDto.password, false);
+        var result = await this.signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
 
         if (!result.Succeeded)
         {

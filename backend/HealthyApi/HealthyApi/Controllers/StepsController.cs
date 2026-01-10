@@ -30,12 +30,12 @@ public class StepsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetHistory()
     {
-        if (!this.ModelState.IsValid)
-        {
-            return this.BadRequest(this.ModelState);
-        }
-
         var userId = this.userManager.GetUserId(this.User);
+
+        if (userId == null)
+        {
+            return this.Unauthorized();
+        }
 
         var steps = await this.dbContext.StepRecords
             .Where(step => step.UserId == userId)
@@ -55,11 +55,16 @@ public class StepsController : ControllerBase
 
         var userId = this.userManager.GetUserId(this.User);
 
+        if (userId == null)
+        {
+            return this.Unauthorized();
+        }
+
         var record = new StepRecord
         {
             UserId = userId!,
-            Date = stepRecordDto.date,
-            Steps = stepRecordDto.steps,
+            Date = stepRecordDto.Date,
+            Steps = stepRecordDto.Steps,
         };
 
         await this.dbContext.AddAsync(record);

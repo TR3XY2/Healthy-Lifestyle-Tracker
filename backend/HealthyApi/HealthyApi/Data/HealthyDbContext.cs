@@ -24,10 +24,26 @@ namespace HealthyApi.Data
             base.OnModelCreating(builder);
 
             builder.Entity<StepRecord>()
+                .Property(x => x.Date)
+                .HasColumnType("date");
+
+            builder.Entity<StepRecord>()
+                .HasIndex(x => new { x.UserId, x.Date })
+                .IsUnique();
+
+            builder.Entity<StepRecord>()
                 .HasOne(sr => sr.User)
                 .WithMany(u => u.StepRecords)
                 .HasForeignKey(sr => sr.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<WeightRecord>()
+                .HasIndex(x => new { x.UserId, x.Date })
+                .IsUnique();
+
+            builder.Entity<WeightRecord>()
+                .Property(x => x.Date)
+                .HasColumnType("date");
 
             builder.Entity<WeightRecord>()
                 .HasOne(wr => wr.User)

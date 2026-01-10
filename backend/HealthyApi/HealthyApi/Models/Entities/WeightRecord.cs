@@ -12,7 +12,7 @@ public class WeightRecord
 
     public User User { get; set; } = null!;
 
-    public DateTime Date { get; set; }
+    public DateOnly Date { get; set; }
 
     public double Weight { get; set; }
 }
