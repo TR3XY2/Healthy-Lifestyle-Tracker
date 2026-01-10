@@ -6,6 +6,7 @@ namespace HealthyApi.Services;
 
 using HealthyApi.Data;
 using HealthyApi.DTOs.Steps;
+using HealthyApi.Mappings;
 using HealthyApi.Models.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ public class StepsService : IStepsService
         this.dbContext = dbContext;
     }
 
-    public async Task<StepRecord> AddAsync(string userId, StepCreateDto dto)
+    public async Task<StepResponseDto> AddAsync(string userId, StepCreateDto dto)
     {
         var existing = await this.dbContext.StepRecords.FirstOrDefaultAsync(step => step.UserId == userId && step.Date == dto.Date);
 
@@ -27,7 +28,7 @@ public class StepsService : IStepsService
         {
             existing.Steps = dto.Steps;
             await this.dbContext.SaveChangesAsync();
-            return existing;
+            return existing.ToDto();
         }
 
         var stepRecord = new StepRecord
@@ -40,11 +41,16 @@ public class StepsService : IStepsService
         await this.dbContext.StepRecords.AddAsync(stepRecord);
         await this.dbContext.SaveChangesAsync();
 
-        return stepRecord;
+        return stepRecord.ToDto();
     }
 
-    public async Task<IEnumerable<StepRecord>> GetHistoryAsync(string userId)
+    public async Task<IEnumerable<StepResponseDto>> GetHistoryAsync(string userId)
     {
-        return await this.dbContext.StepRecords.Where(record => record.UserId == userId).OrderByDescending(step => step.Date).ToListAsync();
+        return await this.dbContext.StepRecords
+            .AsNoTracking()
+            .Where(record => record.UserId == userId)
+            .OrderByDescending(step => step.Date)
+            .Select(step => step.ToDto())
+            .ToListAsync();
     }
 }

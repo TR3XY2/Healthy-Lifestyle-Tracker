@@ -5,7 +5,8 @@
 namespace HealthyApi.Services;
 
 using HealthyApi.Data;
-using HealthyApi.DTOs.Steps;
+using HealthyApi.DTOs.Weight;
+using HealthyApi.Mappings;
 using HealthyApi.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,7 @@ public class WeightService : IWeightService
         this.dbContext = dbContext;
     }
 
-    public async Task<WeightRecord> AddAsync(string userId, WeightCreateDto dto)
+    public async Task<WeightResponseDto> AddAsync(string userId, WeightCreateDto dto)
     {
         var existing = await this.dbContext.WeightRecords.FirstOrDefaultAsync(x => x.UserId == userId && x.Date == dto.Date);
 
@@ -26,7 +27,7 @@ public class WeightService : IWeightService
         {
             existing.Weight = dto.Weight;
             await this.dbContext.SaveChangesAsync();
-            return existing;
+            return existing.ToDto();
         }
 
         var weightRecord = new WeightRecord
@@ -39,11 +40,16 @@ public class WeightService : IWeightService
         await this.dbContext.WeightRecords.AddAsync(weightRecord);
         await this.dbContext.SaveChangesAsync();
 
-        return weightRecord;
+        return weightRecord.ToDto();
     }
 
-    public async Task<IEnumerable<WeightRecord>> GetHistoryAsync(string userId)
+    public async Task<IEnumerable<WeightResponseDto>> GetHistoryAsync(string userId)
     {
-        return await this.dbContext.WeightRecords.Where(weight => weight.UserId == userId).OrderByDescending(weight => weight.Date).ToListAsync();
+        return await this.dbContext.WeightRecords
+            .AsNoTracking()
+            .Where(weight => weight.UserId == userId)
+            .OrderByDescending(weight => weight.Date)
+            .Select(weight => weight.ToDto())
+            .ToListAsync();
     }
 }

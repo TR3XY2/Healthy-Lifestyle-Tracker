@@ -2,7 +2,7 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
-namespace HealthyApi.DTOs.Steps;
+namespace HealthyApi.DTOs.Weight;
 
 public record WeightCreateDto(
     DateOnly Date,

@@ -4,12 +4,12 @@
 
 namespace HealthyApi.Services;
 
-using HealthyApi.DTOs.Steps;
+using HealthyApi.DTOs.Weight;
 using HealthyApi.Models.Entities;
 
 public interface IWeightService
 {
-    Task<IEnumerable<WeightRecord>> GetHistoryAsync(string userId);
+    Task<IEnumerable<WeightResponseDto>> GetHistoryAsync(string userId);
 
-    Task<WeightRecord> AddAsync(string userId, WeightCreateDto dto);
+    Task<WeightResponseDto> AddAsync(string userId, WeightCreateDto dto);
 }

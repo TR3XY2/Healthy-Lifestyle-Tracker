@@ -6,7 +6,9 @@ namespace HealthyApi.Controllers;
 
 using HealthyApi.Data;
 using HealthyApi.DTOs.Steps;
+using HealthyApi.Mappings;
 using HealthyApi.Models.Entities;
+using HealthyApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -18,12 +20,12 @@ using Microsoft.EntityFrameworkCore;
 [ApiController]
 public class StepsController : ControllerBase
 {
-    private readonly HealthyDbContext dbContext;
+    private readonly IStepsService stepsService;
     private readonly UserManager<User> userManager;
 
-    public StepsController(HealthyDbContext dbContext, UserManager<User> userManager)
+    public StepsController(IStepsService stepsService, UserManager<User> userManager)
     {
-        this.dbContext = dbContext;
+        this.stepsService = stepsService;
         this.userManager = userManager;
     }
 
@@ -37,10 +39,7 @@ public class StepsController : ControllerBase
             return this.Unauthorized();
         }
 
-        var steps = await this.dbContext.StepRecords
-            .Where(step => step.UserId == userId)
-            .OrderBy(step => step.Date)
-            .ToListAsync();
+        var steps = await this.stepsService.GetHistoryAsync(userId);
 
         return this.Ok(steps);
     }
@@ -60,15 +59,7 @@ public class StepsController : ControllerBase
             return this.Unauthorized();
         }
 
-        var record = new StepRecord
-        {
-            UserId = userId!,
-            Date = stepRecordDto.Date,
-            Steps = stepRecordDto.Steps,
-        };
-
-        await this.dbContext.AddAsync(record);
-        await this.dbContext.SaveChangesAsync();
+        var record = await this.stepsService.AddAsync(userId, stepRecordDto);
 
         return this.Ok(record);
     }

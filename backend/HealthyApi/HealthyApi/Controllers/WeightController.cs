@@ -5,8 +5,10 @@
 namespace HealthyApi.Controllers;
 
 using HealthyApi.Data;
-using HealthyApi.DTOs.Steps;
+using HealthyApi.DTOs.Weight;
+using HealthyApi.Mappings;
 using HealthyApi.Models.Entities;
+using HealthyApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -18,12 +20,12 @@ using Microsoft.EntityFrameworkCore;
 [Authorize]
 public class WeightController : ControllerBase
 {
-    private readonly HealthyDbContext dbContext;
+    private readonly IWeightService weightService;
     private readonly UserManager<User> userManager;
 
-    public WeightController(HealthyDbContext dbContext, UserManager<User> userManager)
+    public WeightController(IWeightService weightService, UserManager<User> userManager)
     {
-        this.dbContext = dbContext;
+        this.weightService = weightService;
         this.userManager = userManager;
     }
 
@@ -37,10 +39,7 @@ public class WeightController : ControllerBase
             return this.Unauthorized();
         }
 
-        var weights = await this.dbContext.WeightRecords
-            .Where(record => record.UserId == userId)
-            .OrderBy(record => record.Date)
-            .ToListAsync();
+        var weights = await this.weightService.GetHistoryAsync(userId);
 
         return this.Ok(weights);
     }
@@ -60,15 +59,7 @@ public class WeightController : ControllerBase
             return this.Unauthorized();
         }
 
-        var record = new WeightRecord
-        {
-            Date = weightCreateDto.Date,
-            Weight = weightCreateDto.Weight,
-            UserId = userId!,
-        };
-
-        await this.dbContext.AddAsync(record);
-        await this.dbContext.SaveChangesAsync();
+        var record = await this.weightService.AddAsync(userId, weightCreateDto);
 
         return this.Ok(record);
     }
