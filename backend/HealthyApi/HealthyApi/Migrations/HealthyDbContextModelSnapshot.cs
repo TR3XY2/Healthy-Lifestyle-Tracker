@@ -30,8 +30,8 @@ namespace HealthyApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
 
                     b.Property<int>("Steps")
                         .HasColumnType("integer");
@@ -42,7 +42,8 @@ namespace HealthyApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
 
                     b.ToTable("StepRecords");
                 });
@@ -119,8 +120,8 @@ namespace HealthyApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -131,7 +132,8 @@ namespace HealthyApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
 
                     b.ToTable("WeightRecords");
                 });
