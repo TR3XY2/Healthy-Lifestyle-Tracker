@@ -5,6 +5,7 @@ import * as AuthApi from "../api/auth.api";
 
 type AuthContextType = {
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -13,14 +14,17 @@ const AuthContext = createContext<AuthContextType>(null!);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setAuth] = useState(false);
+  const [isLoading, setLoading] = useState(true);
 
   useEffect(() => {
-    getToken().then((token) => {
-      if (token) {
-        setToken(token);
-        setAuth(true);
-      }
-    });
+    getToken()
+      .then((token) => {
+        if (token) {
+          setToken(token);
+          setAuth(true);
+        }
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   async function login(email: string, password: string) {
@@ -37,7 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, isLoading, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

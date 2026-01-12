@@ -1,25 +1,26 @@
 import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
-import { login } from "@/api/auth.api";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen() {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  
-  const onLogin = async() => {
+
+  const onLogin = async () => {
     try {
       setLoading(true);
       await login(email, password);
       router.replace("/(app)/dashboard");
-    } catch (e) {
-      Alert.alert("Login failed", "Invalid email or password");
-    }
-    finally {
+    } catch (e: any) {
+      console.log("LOGIN ERROR:", e?.message);
+      Alert.alert("Login failed", e?.message ?? "Unknown error");
+    } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <View style={{ flex: 1, padding: 24, justifyContent: "center" }}>

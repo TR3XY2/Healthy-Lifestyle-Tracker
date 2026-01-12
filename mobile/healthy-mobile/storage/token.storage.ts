@@ -5,8 +5,6 @@ const KEY = "auth_token";
 export const saveToken = (token: string) =>
   SecureStore.setItemAsync(KEY, token);
 
-export const getToken = () =>
-  SecureStore.getItemAsync(KEY);
+export const getToken = () => SecureStore.getItemAsync(KEY);
 
-export const clearToken = () =>
-  SecureStore.deleteItemAsync(KEY);
+export const clearToken = () => SecureStore.deleteItemAsync(KEY);

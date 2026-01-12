@@ -6,10 +6,9 @@ const card = {
   borderRadius: 12,
   backgroundColor: "#f1f5f9",
 };
-
 const value = {
   fontSize: 22,
-  fontWeight: "600",
+  fontWeight: "600" as const,
 };
 
 export default function Dashboard() {

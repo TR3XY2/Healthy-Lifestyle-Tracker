@@ -1,27 +1,46 @@
-const API_URL = "https://YOUR_BACKEND_URL/api";
+const API_URL = "http://10.0.2.2:5104/api";
 
-let token: string | null = null;
+let authToken: string | null = null;
 
-export const setToken = (t: string | null) => {
-  token = t;
-};
+export function setToken(token: string | null) {
+  authToken = token;
+}
 
-export async function apiFetch<T>(
-  url: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const res = await fetch(`${API_URL}${url}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+async function request(url: string, options: RequestInit = {}) {
+  console.log("REQUEST:", API_URL + url, options.body);
 
-  if (!res.ok) {
-    throw new Error(await res.text());
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
   }
 
-  return res.json();
+  const res = await fetch(API_URL + url, {
+    ...options,
+    headers,
+  });
+
+  console.log("RESPONSE STATUS:", res.status);
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.log("API ERROR:", text);
+    throw new Error(text);
+  }
+
+  const json = await res.json();
+  console.log("API OK:", json);
+  return json;
 }
+
+export const api = {
+  post: (url: string, body?: any) =>
+    request(url, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  get: (url: string) => request(url, { method: "GET" }),
+};
