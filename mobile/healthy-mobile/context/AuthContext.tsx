@@ -7,6 +7,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -34,6 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuth(true);
   }
 
+  async function register(email: string, password: string){
+    await AuthApi.register(email, password);
+  }
+
   async function logout() {
     await clearToken();
     setToken(null);
@@ -42,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, isLoading, login, logout }}
+      value={{ isAuthenticated, isLoading, login, register, logout }}
     >
       {children}
     </AuthContext.Provider>
