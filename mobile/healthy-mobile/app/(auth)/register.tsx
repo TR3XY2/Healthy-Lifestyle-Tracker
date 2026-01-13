@@ -56,6 +56,12 @@ export default function RegisterScreen() {
           {loading ? "Creating..." : "Register"}
         </Text>
       </Pressable>
+
+      <Pressable onPress={() => router.push("/register")}>
+        <Text style={{ textAlign: "center", marginTop: 16 }}>
+          Have an account? Log in
+        </Text>
+      </Pressable>
     </View>
   );
 }

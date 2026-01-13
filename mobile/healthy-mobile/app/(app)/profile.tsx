@@ -24,7 +24,9 @@ export default function Profile() {
           borderRadius: 8,
         }}
       >
-        <Text style={{ color: "white", textAlign: "center", fontWeight: "600" }}>
+        <Text
+          style={{ color: "white", textAlign: "center", fontWeight: "600" }}
+        >
           Logout
         </Text>
       </Pressable>
