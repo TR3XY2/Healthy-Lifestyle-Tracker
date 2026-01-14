@@ -44,13 +44,28 @@ public class StepsService : IStepsService
         return stepRecord.ToDto();
     }
 
-    public async Task<IEnumerable<StepResponseDto>> GetHistoryAsync(string userId)
-    {
-        return await this.dbContext.StepRecords
-            .AsNoTracking()
-            .Where(record => record.UserId == userId)
-            .OrderByDescending(step => step.Date)
-            .Select(step => step.ToDto())
-            .ToListAsync();
-    }
+    public async Task<IEnumerable<StepResponseDto>> GetHistoryAsync(
+        string userId,
+        DateOnly? from,
+        DateOnly? to)
+        {
+            var query = this.dbContext.StepRecords
+                .AsNoTracking()
+                .Where(r => r.UserId == userId);
+
+            if (from.HasValue)
+            {
+                query = query.Where(r => r.Date >= from.Value);
+            }
+
+            if (to.HasValue)
+            {
+                query = query.Where(r => r.Date <= to.Value);
+            }
+
+            return await query
+                .OrderBy(r => r.Date)
+                .Select(r => r.ToDto())
+                .ToListAsync();
+        }
 }

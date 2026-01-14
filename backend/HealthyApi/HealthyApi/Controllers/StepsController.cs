@@ -30,16 +30,17 @@ public class StepsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetHistory()
+    public async Task<IActionResult> GetHistory(
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to)
     {
         var userId = this.userManager.GetUserId(this.User);
-
         if (userId == null)
         {
             return this.Unauthorized();
         }
 
-        var steps = await this.stepsService.GetHistoryAsync(userId);
+        var steps = await this.stepsService.GetHistoryAsync(userId, from, to);
 
         return this.Ok(steps);
     }
