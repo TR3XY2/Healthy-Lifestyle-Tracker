@@ -8,7 +8,6 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  1;
 
   const onRegister = async () => {
     try {
