@@ -60,7 +60,7 @@ public class StepsService : IStepsService
 
             if (to.HasValue)
             {
-                query = query.Where(r => r.Date <= to.Value);
+                query = query.Where(r => r.Date < to.Value);
             }
 
             return await query

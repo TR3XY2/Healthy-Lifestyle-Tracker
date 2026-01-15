@@ -1,9 +1,62 @@
-import { View, Text } from "react-native";
+import { getStepsHistory } from "@/api/steps.api";
+import { getWeekRange } from "@/utils/week";
+import { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  Alert,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 
 export default function Steps() {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadWeek();
+  }, [weekOffset]);
+
+  async function loadWeek() {
+    setLoading(true);
+    const { from, to } = getWeekRange(weekOffset);
+
+    try {
+      const res = await getStepsHistory(from, to);
+      setData(res);
+    } catch (e: any) {
+      Alert.alert("Loading steps failed.", e?.message ?? "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <View>
-      <Text>Steps history (soon)</Text>
+    <View style={{ padding: 16 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <TouchableOpacity onPress={() => setWeekOffset((week) => week - 1)}>
+          <Text>⬅ Previous</Text>
+        </TouchableOpacity>
+
+        <Text>Week {weekOffset === 0 ? "Current" : weekOffset}</Text>
+
+        <TouchableOpacity onPress={() => setWeekOffset((week) => week + 1)}>
+          <Text>Next ➡</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 20 }} />
+      ) : (
+        <View style={{ marginTop: 20 }}>
+          {data.map((d) => (
+            <Text key={d.date}>
+              {d.date}: {d.steps}
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
