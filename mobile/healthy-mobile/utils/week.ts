@@ -15,6 +15,22 @@ export function getWeekRange(offsetWeeks: number = 0) {
   return { from: monday, to: to };
 }
 
+export function formatWeekRange(from: Date, to: Date) {
+  const options: Intl.DateTimeFormatOptions = {
+    day: "numeric",
+    month: "short",
+  };
+
+  const start = from.toLocaleDateString("en-GB", options);
+
+  const endDate = new Date(to);
+  endDate.setDate(to.getDate() - 1);
+
+  const end = endDate.toLocaleDateString("en-GB", options);
+
+  return `${start} – ${end}`;
+}
+
 export function normalizeWeekData(apiData: any[], from: Date) {
   const map = new Map(apiData.map((d) => [d.date, d.steps]));
 

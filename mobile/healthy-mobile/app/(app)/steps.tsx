@@ -1,5 +1,5 @@
 import { getStepsHistory } from "@/api/steps.api";
-import { getWeekRange, normalizeWeekData } from "@/utils/week";
+import { formatWeekRange, getWeekRange, normalizeWeekData } from "@/utils/week";
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -15,6 +15,7 @@ export default function Steps() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { from, to } = getWeekRange(weekOffset);
   const max = Math.max(...data.map((d) => d.value));
 
   const formatSteps = (value: number) => {
@@ -28,7 +29,6 @@ export default function Steps() {
 
   async function loadWeek() {
     setLoading(true);
-    const { from, to } = getWeekRange(weekOffset);
 
     try {
       const res = await getStepsHistory(from, to);
@@ -48,7 +48,7 @@ export default function Steps() {
           <Text>⬅ Previous</Text>
         </TouchableOpacity>
 
-        <Text>Week {weekOffset === 0 ? "Current" : weekOffset}</Text>
+        <Text>{formatWeekRange(from, to)}</Text>
 
         <TouchableOpacity onPress={() => setWeekOffset((week) => week + 1)}>
           <Text>Next ➡</Text>
