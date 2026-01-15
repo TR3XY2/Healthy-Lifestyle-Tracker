@@ -1,6 +1,6 @@
 import { getStepsHistory } from "@/api/steps.api";
-import { getWeekRange } from "@/utils/week";
-import { useEffect, useState } from "react";
+import { getWeekRange, normalizeWeekData } from "@/utils/week";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { BarChart } from "react-native-gifted-charts";
 
 export default function Steps() {
   const [weekOffset, setWeekOffset] = useState(0);
@@ -24,7 +25,8 @@ export default function Steps() {
 
     try {
       const res = await getStepsHistory(from, to);
-      setData(res);
+      const normalized = normalizeWeekData(res, from);
+      setData(normalized);
     } catch (e: any) {
       Alert.alert("Loading steps failed.", e?.message ?? "Unknown error");
     } finally {
@@ -49,13 +51,18 @@ export default function Steps() {
       {loading ? (
         <ActivityIndicator style={{ marginTop: 20 }} />
       ) : (
-        <View style={{ marginTop: 20 }}>
-          {data.map((d) => (
-            <Text key={d.date}>
-              {d.date}: {d.steps}
-            </Text>
-          ))}
-        </View>
+        <BarChart
+          data={data}
+          height={220}
+          barWidth={24}
+          spacing={22}
+          roundedTop
+          hideRules
+          yAxisThickness={0}
+          xAxisThickness={0}
+          yAxisTextStyle={{ color: "#888" }}
+          xAxisLabelTextStyle={{ color: "#444" }}
+        />
       )}
     </View>
   );
