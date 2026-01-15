@@ -15,6 +15,13 @@ export default function Steps() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const max = Math.max(...data.map((d) => d.value));
+
+  const formatSteps = (value: number) => {
+    if (value >= 10000) return `${Math.round(value / 1000)}k`;
+    return value.toString();
+  };
+
   useEffect(() => {
     loadWeek();
   }, [weekOffset]);
@@ -52,11 +59,23 @@ export default function Steps() {
         <ActivityIndicator style={{ marginTop: 20 }} />
       ) : (
         <BarChart
-          data={data}
-          height={220}
-          barWidth={24}
-          spacing={22}
-          roundedTop
+          data={data.map((d) => ({
+            ...d,
+            topLabelComponent: () => (
+              <Text
+                style={{
+                  fontSize: 12,
+                  textAlign: "center",
+                }}
+              >
+                {formatSteps(d.value)}
+              </Text>
+            ),
+          }))}
+          height={260}
+          barWidth={30}
+          spacing={18}
+          maxValue={max * 1.15}
           hideRules
           yAxisThickness={0}
           xAxisThickness={0}
