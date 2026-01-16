@@ -32,7 +32,7 @@ export function formatWeekRange(from: Date, to: Date) {
 }
 
 export function normalizeWeekData(apiData: any[], from: Date) {
-  const map = new Map(apiData.map((d) => [d.date, d.steps]));
+  const map = new Map(apiData.map((d) => [d.date, {steps: d.steps, calories: d.calories}]));
 
   const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -41,10 +41,12 @@ export function normalizeWeekData(apiData: any[], from: Date) {
     date.setDate(from.getDate() + i);
 
     const key = date.toISOString().split("T")[0];
+    const day = map.get(key);
 
     return {
       label: labels[i],
-      value: map.get(key) ?? 0,
+      steps: day?.steps ?? 0,
+      calories: day?.calories ?? 0,
     };
   });
 }

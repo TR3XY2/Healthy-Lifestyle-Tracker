@@ -9,10 +9,10 @@ using HealthyApi.Models.Entities;
 
 public interface IStepsService
 {
-    Task<IEnumerable<StepResponseDto>> GetHistoryAsync(
+    Task<IEnumerable<StepsDayDto>> GetHistoryAsync(
         string userId,
         DateOnly? from,
         DateOnly? to);
 
-    Task<StepResponseDto> AddAsync(string userId, StepCreateDto dto);
+    Task<StepsDayDto> AddAsync(string userId, StepCreateDto dto);
 }

@@ -20,52 +20,96 @@ public class StepsService : IStepsService
         this.dbContext = dbContext;
     }
 
-    public async Task<StepResponseDto> AddAsync(string userId, StepCreateDto dto)
+    public async Task<StepsDayDto> AddAsync(string userId, StepCreateDto dto)
     {
-        var existing = await this.dbContext.StepRecords.FirstOrDefaultAsync(step => step.UserId == userId && step.Date == dto.Date);
+        var record = await this.dbContext.StepRecords
+        .FirstOrDefaultAsync(s => s.UserId == userId && s.Date == dto.Date);
 
-        if (existing != null)
+        if (record == null)
         {
-            existing.Steps = dto.Steps;
-            await this.dbContext.SaveChangesAsync();
-            return existing.ToDto();
+            record = new StepRecord
+            {
+                UserId = userId,
+                Date = dto.Date,
+                Steps = dto.Steps,
+            };
+            this.dbContext.StepRecords.Add(record);
+        }
+        else
+        {
+            record.Steps = dto.Steps;
         }
 
-        var stepRecord = new StepRecord
-        {
-            UserId = userId,
-            Date = dto.Date,
-            Steps = dto.Steps,
-        };
-
-        await this.dbContext.StepRecords.AddAsync(stepRecord);
         await this.dbContext.SaveChangesAsync();
 
-        return stepRecord.ToDto();
+        var weight = await this.dbContext.WeightRecords
+            .Where(w => w.UserId == userId)
+            .OrderBy(w => Math.Abs(
+                (w.Date.ToDateTime(TimeOnly.MinValue) -
+                 dto.Date.ToDateTime(TimeOnly.MinValue)).TotalDays))
+            .FirstOrDefaultAsync();
+
+        return new StepsDayDto(
+            record.Date,
+            record.Steps,
+            CalculateCalories(record.Steps, weight?.Weight),
+            weight?.Weight,
+            weight?.Date);
     }
 
-    public async Task<IEnumerable<StepResponseDto>> GetHistoryAsync(
+    public async Task<IEnumerable<StepsDayDto>> GetHistoryAsync(
         string userId,
         DateOnly? from,
         DateOnly? to)
+    {
+        var steps = await this.dbContext.StepRecords
+            .AsNoTracking()
+            .Where(s => s.UserId == userId)
+            .Where(s => !from.HasValue || s.Date >= from.Value)
+            .Where(s => !to.HasValue || s.Date < to.Value)
+            .OrderBy(s => s.Date)
+            .ToListAsync();
+
+        var weights = await this.dbContext.WeightRecords
+            .AsNoTracking()
+            .Where(w => w.UserId == userId)
+            .OrderBy(w => w.Date)
+            .ToListAsync();
+
+        return steps.Select(step =>
         {
-            var query = this.dbContext.StepRecords
-                .AsNoTracking()
-                .Where(r => r.UserId == userId);
+            var weight = FindClosestWeight(step.Date, weights);
 
-            if (from.HasValue)
-            {
-                query = query.Where(r => r.Date >= from.Value);
-            }
+            return new StepsDayDto(
+                Date: step.Date,
+                Steps: step.Steps,
+                Calories: CalculateCalories(step.Steps, weight?.Weight),
+                WeightUsed: weight?.Weight,
+                WeightDate: weight?.Date);
+        });
+    }
 
-            if (to.HasValue)
-            {
-                query = query.Where(r => r.Date < to.Value);
-            }
-
-            return await query
-                .OrderBy(r => r.Date)
-                .Select(r => r.ToDto())
-                .ToListAsync();
+    private static WeightRecord? FindClosestWeight(DateOnly date, List<WeightRecord> weights)
+    {
+        if (weights.Count == 0)
+        {
+            return null;
         }
+
+        return weights
+            .OrderBy(w => Math.Abs(
+                (w.Date.ToDateTime(TimeOnly.MinValue) -
+                 date.ToDateTime(TimeOnly.MinValue)).TotalDays))
+            .First();
+    }
+
+    private static int CalculateCalories(int steps, double? weight)
+    {
+        if (weight == null)
+        {
+            return (int)(steps * 0.04);
+        }
+
+        return (int)(steps * weight.Value * 0.0005);
+    }
 }
