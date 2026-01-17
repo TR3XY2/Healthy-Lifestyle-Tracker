@@ -21,6 +21,8 @@ public static class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        builder.WebHost.UseUrls("http://0.0.0.0:5104");
+
         // Controllers
         builder.Services.AddControllers();
 
@@ -86,7 +88,20 @@ public static class Program
             });
         });
 
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowExpo", policy =>
+            {
+                policy
+                    .AllowAnyOrigin()
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
+
         var app = builder.Build();
+
+        app.UseCors("AllowExpo");
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -94,8 +109,6 @@ public static class Program
             app.UseSwagger();
             app.UseSwaggerUI();
         }
-
-        app.UseHttpsRedirection();
 
         app.UseAuthentication();
         app.UseAuthorization();
