@@ -17,6 +17,7 @@ export default function Steps() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const { from, to } = getWeekRange(weekOffset);
 
@@ -55,7 +56,7 @@ export default function Steps() {
   }
 
   return (
-    <View style={{ padding: 16 }}>
+    <View style={{ padding: 14 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <TouchableOpacity onPress={() => setWeekOffset((week) => week - 1)}>
           <Text>⬅ Previous</Text>
@@ -72,7 +73,7 @@ export default function Steps() {
         <ActivityIndicator style={{ marginTop: 20 }} />
       ) : (
         <BarChart
-          data={chartData.map((d) => ({
+          data={chartData.map((d, i) => ({
             ...d,
             topLabelComponent: () => (
               <Text
@@ -84,10 +85,12 @@ export default function Steps() {
                 {formatValue(d.value)}
               </Text>
             ),
+            frontColor: i === selectedIndex ? "green" : "black",
+            onPress: () => setSelectedIndex(i)
           }))}
           height={260}
           barWidth={30}
-          spacing={18}
+          spacing={14}
           maxValue={max * 1.15}
           hideRules
           yAxisThickness={0}
