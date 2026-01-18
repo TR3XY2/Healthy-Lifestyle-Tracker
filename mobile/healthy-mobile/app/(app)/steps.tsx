@@ -27,6 +27,8 @@ export default function Steps() {
   }));
 
   const max = Math.max(...chartData.map((d) => d.value));
+  const totalSteps = data.reduce((a, b) => a + b.steps, 0);
+  const avgSteps = Math.round(totalSteps / 7);
 
   const formatValue = (value: number) => {
     if (mode === "steps") {
@@ -56,7 +58,17 @@ export default function Steps() {
   }
 
   return (
-    <View style={{ padding: 14 }}>
+    <View style={{ padding: 14}}>
+      <View style={{ alignItems: "center", marginVertical: 16}}>
+        <Text style={{ fontSize: 30, fontWeight: "800", color: "#111" }}>
+          {totalSteps.toLocaleString()} steps
+        </Text>
+
+        <Text style={{ fontSize: 16, fontWeight: "600", color: "#333" }}>
+          {avgSteps.toLocaleString()} avg / day
+        </Text>
+      </View>
+
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <TouchableOpacity onPress={() => setWeekOffset((week) => week - 1)}>
           <Text>⬅ Previous</Text>
@@ -86,7 +98,7 @@ export default function Steps() {
               </Text>
             ),
             frontColor: i === selectedIndex ? "green" : "black",
-            onPress: () => setSelectedIndex(i)
+            onPress: () => setSelectedIndex(i),
           }))}
           height={260}
           barWidth={30}
