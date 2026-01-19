@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 
-type ChartMode = "steps" | "calories";
+type ChartMode = "steps" | "calories" | "distance";
+const METERS_PER_STEP = 0.7;
 
 export default function Steps() {
   const [mode, setMode] = useState<ChartMode>("steps");
@@ -21,10 +22,22 @@ export default function Steps() {
 
   const { from, to } = getWeekRange(weekOffset);
 
-  const chartData = data.map((d) => ({
-    label: d.label,
-    value: mode === "steps" ? d.steps : d.calories,
-  }));
+  const stepsToKm = (steps: number) =>
+    Number(((steps * METERS_PER_STEP) / 1000).toFixed(2));
+
+  const chartData = data.map((d) => {
+    if (mode === "distance") {
+      return {
+        label: d.label,
+        value: stepsToKm(d.steps),
+      };
+    }
+
+    return {
+      label: d.label,
+      value: mode === "steps" ? d.steps : d.calories,
+    };
+  });
 
   const max = Math.max(...chartData.map((d) => d.value));
   const totalSteps = data.reduce((a, b) => a + b.steps, 0);
@@ -32,8 +45,11 @@ export default function Steps() {
 
   const formatValue = (value: number) => {
     if (mode === "steps") {
-      if (value >= 10000) return `${Math.round(value / 1000)}k`;
-      return value.toString();
+      return value >= 10000 ? `${Math.round(value / 1000)}k` : value.toString();
+    }
+
+    if (mode === "distance") {
+      return `${value} km`;
     }
 
     return `${value} kcal`;
@@ -58,8 +74,8 @@ export default function Steps() {
   }
 
   return (
-    <View style={{ padding: 14}}>
-      <View style={{ alignItems: "center", marginVertical: 16}}>
+    <View style={{ padding: 14 }}>
+      <View style={{ alignItems: "center", marginVertical: 16 }}>
         <Text style={{ fontSize: 30, fontWeight: "800", color: "#111" }}>
           {totalSteps.toLocaleString()} steps
         </Text>
@@ -140,6 +156,18 @@ export default function Steps() {
           }}
         >
           <Text>Calories</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setMode("distance")}
+          style={{
+            padding: 8,
+            marginLeft: 8,
+            backgroundColor: mode === "distance" ? "#2196f3" : "#ddd",
+            borderRadius: 6,
+          }}
+        >
+          <Text>Distance</Text>
         </TouchableOpacity>
       </View>
     </View>
