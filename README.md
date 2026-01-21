@@ -4,8 +4,8 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
 
 ## Repository structure
 
-- `backend/HealthyApi/` — ASP.NET Core Web API (JWT auth, PostgreSQL, Swagger)
-- `mobile/healthy-mobile/` — Expo React Native app
+- `backend/HealthyApi/` — ASP.NET Core Web API (JWT auth, PostgreSQL, Swagger).
+- `mobile/healthy-mobile/` — Expo React Native app.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
    }
    ```
 
-   Use a 88+ character base64 secret (for example, `openssl rand -base64 64`) for HMAC-SHA256.
+   Use a base64 secret that is at least 88 characters long (for example, `openssl rand -base64 64`) for HMAC-SHA256.
 
 2. Apply migrations from `backend/HealthyApi/HealthyApi` for the first run or after schema changes:
 
@@ -56,7 +56,9 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
 
 ## Mobile app setup
 
-1. Update the API base URL in `mobile/healthy-mobile/api/client.ts` (default is `http://YOUR_LOCAL_IP:5104/api`) to point to your backend. Use `http://localhost:5104/api` for emulators, or your machine's LAN IP for physical devices.
+1. Update the API base URL in `mobile/healthy-mobile/api/client.ts` (default is `http://YOUR_LOCAL_IP:5104/api`) to point to your backend:
+   - Use `http://localhost:5104/api` for emulators.
+   - Use your machine's LAN IP for physical devices.
 2. Install dependencies:
 
    ```bash
