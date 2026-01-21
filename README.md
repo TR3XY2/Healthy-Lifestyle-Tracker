@@ -16,7 +16,7 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
 ## Backend setup
 
 1. Configure connection string and JWT settings in
-   `backend/HealthyApi/HealthyApi/appsettings.Development.json`:
+   `backend/HealthyApi/HealthyApi/appsettings.json`:
 
    ```json
    {
