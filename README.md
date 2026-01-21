@@ -26,12 +26,12 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
      "Jwt": {
        "Issuer": "healthy-api",
        "Audience": "healthy-mobile",
-       "Key": "replace-with-a-secure-key-32+chars"
+       "Key": "replace-with-a-secure-key-44+chars"
      }
    }
    ```
 
-   Use a 32+ byte secret (for example, `openssl rand -base64 32`) for HMAC-SHA256.
+   Use a 44+ character base64 secret (for example, `openssl rand -base64 32`) for HMAC-SHA256.
 
 2. Apply migrations from `backend/HealthyApi/HealthyApi` for the first run or after schema changes:
 
@@ -56,7 +56,7 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
 
 ## Mobile app setup
 
-1. Update the API base URL in `mobile/healthy-mobile/api/client.ts` to point to your backend.
+1. Update the API base URL in `mobile/healthy-mobile/api/client.ts` (default is `http://192.168.0.19:5104/api`) to point to your backend, e.g. `http://localhost:5104/api`.
 2. Install dependencies:
 
    ```bash
