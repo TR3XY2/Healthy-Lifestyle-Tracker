@@ -4,8 +4,8 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
 
 ## Repository structure
 
-- `backend/HealthyApi` — ASP.NET Core Web API (JWT auth, PostgreSQL, Swagger)
-- `mobile/healthy-mobile` — Expo React Native app
+- `backend/HealthyApi/` — ASP.NET Core Web API (JWT auth, PostgreSQL, Swagger)
+- `mobile/healthy-mobile/` — Expo React Native app
 
 ## Prerequisites
 
@@ -26,12 +26,14 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
      "Jwt": {
        "Issuer": "healthy-api",
        "Audience": "healthy-mobile",
-       "Key": "replace-with-a-secure-key"
+       "Key": "replace-with-a-secure-key-32+chars"
      }
    }
    ```
 
-2. (Optional) Apply migrations from `backend/HealthyApi/HealthyApi`:
+   Use a 32+ byte secret (for example, `openssl rand -base64 32`) for HMAC-SHA256.
+
+2. Apply migrations from `backend/HealthyApi/HealthyApi` for the first run or after schema changes:
 
    ```bash
    dotnet ef database update
