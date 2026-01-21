@@ -56,7 +56,7 @@ Track daily steps and weight progress with a .NET 8 Web API backend and an Expo-
 
 ## Mobile app setup
 
-1. Update the API base URL in `mobile/healthy-mobile/api/client.ts` to point at your backend.
+1. Update the API base URL in `mobile/healthy-mobile/api/client.ts` to point to your backend.
 2. Install dependencies:
 
    ```bash
