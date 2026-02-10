@@ -11,4 +11,6 @@ public class User : IdentityUser
     public ICollection<StepRecord> StepRecords { get; set; } = new List<StepRecord>();
 
     public ICollection<WeightRecord> WeightRecords { get; set; } = new List<WeightRecord>();
+
+    public UserProfile? UserProfile { get; set; }
 }
