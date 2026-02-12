@@ -19,6 +19,8 @@ namespace HealthyApi.Data
 
         public DbSet<WeightRecord> WeightRecords { get; set; }
 
+        public DbSet<UserProfile> UserProfiles { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -49,6 +51,12 @@ namespace HealthyApi.Data
                 .HasOne(wr => wr.User)
                 .WithMany(u => u.WeightRecords)
                 .HasForeignKey(wr => wr.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<User>()
+                .HasOne(u => u.UserProfile)
+                .WithOne(p => p.User)
+                .HasForeignKey<UserProfile>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

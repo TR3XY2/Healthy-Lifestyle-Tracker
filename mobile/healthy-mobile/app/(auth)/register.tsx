@@ -13,8 +13,7 @@ export default function RegisterScreen() {
     try {
       setLoading(true);
       await register(email, password);
-      Alert.alert("Success", "Account created. Please log in.");
-      router.replace("/login");
+      router.replace("/(app)/dashboard");
     } catch (e: any) {
       console.log("REGISTER ERROR:", e?.message);
       Alert.alert("Register failed", e?.message ?? "Unknown error");
@@ -56,7 +55,7 @@ export default function RegisterScreen() {
         </Text>
       </Pressable>
 
-      <Pressable onPress={() => router.push("/register")}>
+      <Pressable onPress={() => router.push("/login")}>
         <Text style={{ textAlign: "center", marginTop: 16 }}>
           Have an account? Log in
         </Text>

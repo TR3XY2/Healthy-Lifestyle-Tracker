@@ -12,5 +12,5 @@ public class User : IdentityUser
 
     public ICollection<WeightRecord> WeightRecords { get; set; } = new List<WeightRecord>();
 
-    public UserProfile? UserProfile { get; set; }
+    public UserProfile UserProfile { get; set; } = null!;
 }

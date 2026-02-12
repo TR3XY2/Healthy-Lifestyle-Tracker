@@ -4,8 +4,10 @@
 
 namespace HealthyApi.Controllers;
 
+using HealthyApi.Data;
 using HealthyApi.DTOs.Auth;
 using HealthyApi.Models.Entities;
+using HealthyApi.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -21,13 +23,15 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<User> userManager;
     private readonly IConfiguration configuration;
+    private readonly IProfileService profileService;
     private readonly SignInManager<User> signInManager;
 
-    public AuthController(UserManager<User> userManager, SignInManager<User> signInManager, IConfiguration configuration)
+    public AuthController(UserManager<User> userManager, SignInManager<User> signInManager, IConfiguration configuration, IProfileService profileService)
     {
         this.userManager = userManager;
         this.signInManager = signInManager;
         this.configuration = configuration;
+        this.profileService = profileService;
     }
 
     [HttpPost("register")]
@@ -51,9 +55,18 @@ public class AuthController : ControllerBase
             return this.BadRequest(result.Errors);
         }
 
-        await this.userManager.AddToRoleAsync(user, "User");
+        await this.profileService.CreateProfileAsync(user.Id);
 
-        return this.Ok();
+        var roleResult = await this.userManager.AddToRoleAsync(user, "User");
+
+        if (!roleResult.Succeeded)
+        {
+            return this.BadRequest(roleResult.Errors);
+        }
+
+        var token = await this.GenerateJwtAsync(user);
+
+        return this.Ok(token);
     }
 
     [HttpPost("login")]
