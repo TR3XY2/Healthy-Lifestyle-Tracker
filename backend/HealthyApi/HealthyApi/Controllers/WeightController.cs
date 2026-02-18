@@ -63,4 +63,24 @@ public class WeightController : ControllerBase
 
         return this.Ok(record);
     }
+
+    [HttpDelete("{date}")]
+    public async Task<IActionResult> Delete(DateOnly date)
+    {
+        var userId = this.userManager.GetUserId(this.User);
+
+        if (userId == null)
+        {
+            return this.Unauthorized();
+        }
+
+        var result = await this.weightService.DeleteAsync(userId, date);
+
+        if (!result)
+        {
+            return this.NotFound();
+        }
+
+        return this.NoContent();
+    }
 }

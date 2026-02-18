@@ -5,9 +5,14 @@ import {
   Dimensions,
   TouchableOpacity,
   ScrollView,
+  TextInput,
+  Modal,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Svg, { Polyline, Circle, Line } from "react-native-svg";
+import { useWeight } from "../hooks/useWeight";
 
 const screenWidth = Dimensions.get("window").width;
 const POINT_SPACING = 80;
@@ -17,24 +22,24 @@ const POINT_RADIUS = 5;
 export default function Weight() {
   const router = useRouter();
   const scrollViewRef_inner = useRef<ScrollView>(null);
+  const { weights: apiWeights, loading, error, add, remove } = useWeight();
 
-  const weights = [
-    { value: 90, label: "1" },
-    { value: 89.5, label: "2" },
-    { value: 89, label: "3" },
-    { value: 88.8, label: "4" },
-    { value: 88.4, label: "5" },
-    { value: 88, label: "6" },
-    { value: 87.7, label: "7" },
-    { value: 87.3, label: "8" },
-    { value: 87, label: "9" },
-  ];
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newWeight, setNewWeight] = useState("");
+  const [newDate, setNewDate] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // Transform API data to chart format
+  const weights = apiWeights.map((w, index) => ({
+    value: w.weight,
+    label: (index + 1).toString(),
+    date: w.date,
+  }));
 
   const [selectedIndex, setSelectedIndex] = useState(
-    Math.floor(weights.length / 2),
+    Math.max(0, weights.length - 1),
   );
 
-  // Calculate min and max from all visible points
   const visibleValues = weights.map((w) => w.value);
   const visibleMax = Math.max(...visibleValues);
   const visibleMin = Math.min(...visibleValues);
@@ -43,19 +48,254 @@ export default function Weight() {
   const minValue = Math.floor(visibleMin - 2);
   const range = maxValue - minValue;
 
-  const selectedValue = weights[selectedIndex].value;
+  // Ensure selectedIndex is within bounds
+  const validSelectedIndex = Math.min(selectedIndex, weights.length - 1);
+  const selectedValue = weights[validSelectedIndex]?.value || 0;
 
-  // Calculate scroll position to center selected point
+  const handleAddWeight = async () => {
+    if (!newWeight || !newDate) {
+      Alert.alert("Error", "Please enter both weight and date");
+      return;
+    }
+
+    const weightValue = parseFloat(newWeight);
+    if (isNaN(weightValue) || weightValue <= 0) {
+      Alert.alert("Error", "Please enter a valid weight");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await add({ weight: weightValue, date: newDate });
+      setShowAddModal(false);
+      setNewWeight("");
+      setNewDate("");
+      Alert.alert("Success", "Weight added successfully");
+    } catch {
+      Alert.alert("Error", "Failed to add weight");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteWeight = async () => {
+    if (weights.length === 0) {
+      return;
+    }
+
+    const validIndex = Math.min(selectedIndex, weights.length - 1);
+    const selectedWeight = weights[validIndex];
+    Alert.alert(
+      "Delete Weight",
+      `Are you sure you want to delete the weight record from ${selectedWeight.date}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await remove(selectedWeight.date);
+              Alert.alert("Success", "Weight deleted successfully");
+              // Adjust selectedIndex if necessary
+              if (selectedIndex >= weights.length - 1) {
+                setSelectedIndex(Math.max(0, weights.length - 2));
+              }
+            } catch {
+              Alert.alert("Error", "Failed to delete weight");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const openAddModal = () => {
+    // Set default date to today
+    const today = new Date().toISOString().split("T")[0];
+    setNewDate(today);
+    setShowAddModal(true);
+  };
+
   useEffect(() => {
-    // Point x position in SVG is: index * POINT_SPACING + screenWidth / 2
-    // To center it on screen, scroll so it's at screenWidth / 2
-    const pointXInSvg = selectedIndex * POINT_SPACING + screenWidth / 2;
-    const scrollOffset = Math.max(0, pointXInSvg - screenWidth / 2);
+    if (weights.length === 0) return;
+
+    const validIndex = Math.min(selectedIndex, weights.length - 1);
+    const pointXInSvg = validIndex * POINT_SPACING + screenWidth / 2;
+    const baseOffset = pointXInSvg - screenWidth / 2;
+    const maxScroll = (weights.length - 1) * POINT_SPACING;
+    const scrollOffset = Math.max(0, Math.min(maxScroll, baseOffset));
     scrollViewRef_inner.current?.scrollTo({
       x: scrollOffset,
       animated: true,
     });
-  }, [selectedIndex]);
+  }, [selectedIndex, weights.length]);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "red", marginBottom: 16 }}>{error}</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{
+            backgroundColor: "#2563eb",
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 8,
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "700" }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (weights.length === 0) {
+    return (
+      <View style={{ flex: 1 }}>
+        <View
+          style={{
+            paddingTop: 40,
+            padding: 24,
+            backgroundColor: "#fff",
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={{ fontSize: 25 }}>{"<"}</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 20, fontWeight: "700", marginLeft: 16 }}>
+            Weight History
+          </Text>
+        </View>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text style={{ fontSize: 18, marginBottom: 24, color: "#64748b" }}>
+            No weight records yet
+          </Text>
+          <TouchableOpacity
+            onPress={openAddModal}
+            style={{
+              backgroundColor: "#2563eb",
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ color: "white", fontWeight: "700" }}>
+              + Add Weight
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Modal visible={showAddModal} transparent animationType="slide">
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "rgba(0,0,0,0.5)",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "white",
+                padding: 24,
+                borderRadius: 16,
+                width: "80%",
+              }}
+            >
+              <Text
+                style={{ fontSize: 20, fontWeight: "700", marginBottom: 16 }}
+              >
+                Add Weight
+              </Text>
+              <Text style={{ marginBottom: 8 }}>Weight (kg)</Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 16,
+                }}
+                placeholder="Enter weight"
+                keyboardType="decimal-pad"
+                value={newWeight}
+                onChangeText={setNewWeight}
+              />
+              <Text style={{ marginBottom: 8 }}>Date</Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 24,
+                }}
+                placeholder="YYYY-MM-DD"
+                value={newDate}
+                onChangeText={setNewDate}
+              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => setShowAddModal(false)}
+                  disabled={submitting}
+                  style={{
+                    flex: 1,
+                    marginRight: 8,
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: "#ddd",
+                  }}
+                >
+                  <Text style={{ textAlign: "center", fontWeight: "600" }}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleAddWeight}
+                  disabled={submitting}
+                  style={{
+                    flex: 1,
+                    marginLeft: 8,
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    backgroundColor: submitting ? "#94a3b8" : "#2563eb",
+                  }}
+                >
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      color: "white",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {submitting ? "Adding..." : "Add"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -154,7 +394,6 @@ export default function Weight() {
           decelerationRate={0.95}
           onMomentumScrollEnd={(event: any) => {
             const offsetX = event.nativeEvent.contentOffset.x;
-            // Calculate which point is centered (offsetX / POINT_SPACING rounded)
             const nearestIndex = Math.round(offsetX / POINT_SPACING);
             const nextIndex = Math.max(
               0,
@@ -209,7 +448,7 @@ export default function Weight() {
               const normalizedValue =
                 ((weight.value - minValue) / range) * CHART_HEIGHT;
               const y = CHART_HEIGHT - normalizedValue + 30;
-              const isSelected = index === selectedIndex;
+              const isSelected = index === validSelectedIndex;
 
               return (
                 <Circle
@@ -232,6 +471,7 @@ export default function Weight() {
           flexDirection: "row",
           justifyContent: "space-around",
           padding: 16,
+          paddingBottom: 32,
           borderTopWidth: 1,
           borderColor: "#eee",
           marginTop: "auto",
@@ -240,13 +480,106 @@ export default function Weight() {
         <TouchableOpacity>
           <Text style={{ fontSize: 16 }}>Change</Text>
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={openAddModal}>
           <Text style={{ fontSize: 16, fontWeight: "700" }}>+ Add Weight</Text>
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleDeleteWeight}>
           <Text style={{ fontSize: 16, color: "red" }}>Delete</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Add Weight Modal */}
+      <Modal visible={showAddModal} transparent animationType="slide">
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "white",
+              padding: 24,
+              borderRadius: 16,
+              width: "80%",
+            }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 16 }}>
+              Add Weight
+            </Text>
+            <Text style={{ marginBottom: 8 }}>Weight (kg)</Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: "#ddd",
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 16,
+              }}
+              placeholder="Enter weight"
+              keyboardType="decimal-pad"
+              value={newWeight}
+              onChangeText={setNewWeight}
+            />
+            <Text style={{ marginBottom: 8 }}>Date</Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: "#ddd",
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 24,
+              }}
+              placeholder="YYYY-MM-DD"
+              value={newDate}
+              onChangeText={setNewDate}
+            />
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <TouchableOpacity
+                onPress={() => setShowAddModal(false)}
+                disabled={submitting}
+                style={{
+                  flex: 1,
+                  marginRight: 8,
+                  paddingVertical: 12,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                }}
+              >
+                <Text style={{ textAlign: "center", fontWeight: "600" }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleAddWeight}
+                disabled={submitting}
+                style={{
+                  flex: 1,
+                  marginLeft: 8,
+                  paddingVertical: 12,
+                  borderRadius: 8,
+                  backgroundColor: submitting ? "#94a3b8" : "#2563eb",
+                }}
+              >
+                <Text
+                  style={{
+                    textAlign: "center",
+                    color: "white",
+                    fontWeight: "600",
+                  }}
+                >
+                  {submitting ? "Adding..." : "Add"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

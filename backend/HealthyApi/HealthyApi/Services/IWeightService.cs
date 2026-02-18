@@ -12,4 +12,6 @@ public interface IWeightService
     Task<IEnumerable<WeightResponseDto>> GetHistoryAsync(string userId);
 
     Task<WeightResponseDto> AddAsync(string userId, WeightCreateDto dto);
+
+    Task<bool> DeleteAsync(string userId, DateOnly date);
 }

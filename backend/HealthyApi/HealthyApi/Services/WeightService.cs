@@ -48,8 +48,23 @@ public class WeightService : IWeightService
         return await this.dbContext.WeightRecords
             .AsNoTracking()
             .Where(weight => weight.UserId == userId)
-            .OrderByDescending(weight => weight.Date)
+            .OrderBy(weight => weight.Date)
             .Select(weight => weight.ToDto())
             .ToListAsync();
+    }
+
+    public async Task<bool> DeleteAsync(string userId, DateOnly date)
+    {
+        var record = await this.dbContext.WeightRecords
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Date == date);
+
+        if (record == null)
+        {
+            return false;
+        }
+
+        this.dbContext.WeightRecords.Remove(record);
+        await this.dbContext.SaveChangesAsync();
+        return true;
     }
 }

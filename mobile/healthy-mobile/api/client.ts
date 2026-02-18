@@ -30,6 +30,11 @@ async function request(url: string, options: RequestInit = {}) {
     throw new Error(text);
   }
 
+  // Handle empty responses (e.g., 204 No Content)
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return null;
+  }
+
   const json = await res.json();
   console.log("API OK:", json);
   return json;
@@ -43,4 +48,6 @@ export const api = {
     }),
 
   get: (url: string) => request(url, { method: "GET" }),
+
+  delete: (url: string) => request(url, { method: "DELETE" }),
 };
