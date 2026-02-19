@@ -29,13 +29,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
-    const res = await AuthApi.login(email, password);
-    await saveToken(res.token);
-    setToken(res.token);
-    setAuth(true);
+    try {
+      const res = await AuthApi.login(email, password);
+
+      await saveToken(res.token);
+      setToken(res.token);
+      setAuth(true);
+    } catch (error: any) {
+      console.log("error", error);
+      if (error.status === 401) {
+        throw new Error("Wrong email or password");
+      }
+
+      throw new Error("Login failed. Please try again.");
+    }
   }
 
-  async function register(email: string, password: string){
+  async function register(email: string, password: string) {
     const res = await AuthApi.register(email, password);
 
     await saveToken(res.token);
