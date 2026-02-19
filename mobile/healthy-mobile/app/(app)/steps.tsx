@@ -42,6 +42,28 @@ export default function Steps() {
   const max = Math.max(...chartData.map((d) => d.value));
   const totalSteps = data.reduce((a, b) => a + b.steps, 0);
   const avgSteps = Math.round(totalSteps / 7);
+  const totalCalories = data.reduce((a, b) => a + b.calories, 0);
+  const avgCalories = Math.round(totalCalories / 7);
+  const totalDistance = Number(
+    data.reduce((sum, day) => sum + stepsToKm(day.steps), 0).toFixed(2),
+  );
+  const avgDistance = Number((totalDistance / 7).toFixed(2));
+
+  const summary =
+    mode === "steps"
+      ? {
+          total: `${totalSteps.toLocaleString()} steps`,
+          avg: `${avgSteps.toLocaleString()} avg / day`,
+        }
+      : mode === "calories"
+        ? {
+            total: `${totalCalories.toLocaleString()} kcal`,
+            avg: `${avgCalories.toLocaleString()} avg / day`,
+          }
+        : {
+            total: `${totalDistance.toFixed(2)} km`,
+            avg: `${avgDistance.toFixed(2)} avg km / day`,
+          };
 
   const formatValue = (value: number) => {
     if (mode === "steps") {
@@ -56,32 +78,33 @@ export default function Steps() {
   };
 
   useEffect(() => {
+    const loadWeek = async () => {
+      const { from: weekFrom, to: weekTo } = getWeekRange(weekOffset);
+      setLoading(true);
+
+      try {
+        const res = await getStepsHistory(weekFrom, weekTo);
+        const normalized = normalizeWeekData(res, weekFrom);
+        setData(normalized);
+      } catch (e: any) {
+        Alert.alert("Loading steps failed.", e?.message ?? "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadWeek();
   }, [weekOffset]);
-
-  async function loadWeek() {
-    setLoading(true);
-
-    try {
-      const res = await getStepsHistory(from, to);
-      const normalized = normalizeWeekData(res, from);
-      setData(normalized);
-    } catch (e: any) {
-      Alert.alert("Loading steps failed.", e?.message ?? "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <View style={{ padding: 14 }}>
       <View style={{ alignItems: "center", marginVertical: 16 }}>
         <Text style={{ fontSize: 30, fontWeight: "800", color: "#111" }}>
-          {totalSteps.toLocaleString()} steps
+          {summary.total}
         </Text>
 
         <Text style={{ fontSize: 16, fontWeight: "600", color: "#333" }}>
-          {avgSteps.toLocaleString()} avg / day
+          {summary.avg}
         </Text>
       </View>
 
