@@ -27,10 +27,13 @@ async function request(url: string, options: RequestInit = {}) {
   if (!res.ok) {
     const text = await res.text();
     console.log("API ERROR:", text);
-    throw new Error(text);
+
+    throw {
+      status: res.status,
+      message: text,
+    };
   }
 
-  // Handle empty responses (e.g., 204 No Content)
   if (res.status === 204 || res.headers.get("content-length") === "0") {
     return null;
   }

@@ -29,7 +29,6 @@ export default function Weight() {
   const [newDate, setNewDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Transform API data to chart format
   const weights = apiWeights.map((w, index) => ({
     value: w.weight,
     label: (index + 1).toString(),
@@ -48,9 +47,41 @@ export default function Weight() {
   const minValue = Math.floor(visibleMin - 2);
   const range = maxValue - minValue;
 
-  // Ensure selectedIndex is within bounds
   const validSelectedIndex = Math.min(selectedIndex, weights.length - 1);
   const selectedValue = weights[validSelectedIndex]?.value || 0;
+  const showLatestChanges = validSelectedIndex >= 3;
+
+  const currentWeightRecord = weights[validSelectedIndex];
+  const previousWeightRecord =
+    validSelectedIndex >= 1 ? weights[validSelectedIndex - 1] : undefined;
+  const threeBeforeWeightRecord =
+    validSelectedIndex >= 3 ? weights[validSelectedIndex - 3] : undefined;
+
+  const previousDelta =
+    currentWeightRecord && previousWeightRecord
+      ? currentWeightRecord.value - previousWeightRecord.value
+      : 0;
+  const threeBeforeDelta =
+    currentWeightRecord && threeBeforeWeightRecord
+      ? currentWeightRecord.value - threeBeforeWeightRecord.value
+      : 0;
+
+  const getDeltaColor = (delta: number) => {
+    if (delta > 0) return "#dc2626";
+    if (delta < 0) return "#16a34a";
+    return "#64748b";
+  };
+
+  const getDeltaArrow = (delta: number) => {
+    if (delta > 0) return "▲";
+    if (delta < 0) return "▼";
+    return "";
+  };
+
+  const formatDeltaText = (delta: number) => {
+    if (delta === 0) return "0.00 kg";
+    return `${delta > 0 ? "+" : ""}${delta.toFixed(2)} kg`;
+  };
 
   const handleAddWeight = async () => {
     if (!newWeight || !newDate) {
@@ -464,6 +495,107 @@ export default function Weight() {
           </Svg>
         </ScrollView>
       </View>
+
+      {showLatestChanges && currentWeightRecord && (
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginTop: 12,
+            marginBottom: 8,
+            backgroundColor: "#ffffff",
+            borderRadius: 12,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: "#e2e8f0",
+          }}
+        >
+          <Text style={{ fontSize: 15, fontWeight: "700", marginBottom: 10 }}>
+            Latest Weight Changes
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: "#f8fafc",
+                borderRadius: 10,
+                padding: 12,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
+                Previous
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                {getDeltaArrow(previousDelta) ? (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      marginRight: 6,
+                      color: getDeltaColor(previousDelta),
+                    }}
+                  >
+                    {getDeltaArrow(previousDelta)}
+                  </Text>
+                ) : null}
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: getDeltaColor(previousDelta),
+                  }}
+                >
+                  {formatDeltaText(previousDelta)}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                {previousWeightRecord
+                  ? `${previousWeightRecord.date} → ${currentWeightRecord.date}`
+                  : ""}
+              </Text>
+            </View>
+
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: "#f8fafc",
+                borderRadius: 10,
+                padding: 12,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
+                3 Records Earlier
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                {getDeltaArrow(threeBeforeDelta) ? (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      marginRight: 6,
+                      color: getDeltaColor(threeBeforeDelta),
+                    }}
+                  >
+                    {getDeltaArrow(threeBeforeDelta)}
+                  </Text>
+                ) : null}
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: getDeltaColor(threeBeforeDelta),
+                  }}
+                >
+                  {formatDeltaText(threeBeforeDelta)}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                {threeBeforeWeightRecord
+                  ? `${threeBeforeWeightRecord.date} → ${currentWeightRecord.date}`
+                  : ""}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Bottom Action Bar */}
       <View
