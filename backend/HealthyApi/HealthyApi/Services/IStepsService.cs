@@ -15,4 +15,6 @@ public interface IStepsService
         DateOnly? to);
 
     Task<StepsDayDto> AddAsync(string userId, StepCreateDto dto);
+
+    Task<bool> DeleteAsync(string userId, DateOnly date);
 }

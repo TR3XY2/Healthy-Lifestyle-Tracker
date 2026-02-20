@@ -64,4 +64,19 @@ public class StepsController : ControllerBase
 
         return this.Ok(record);
     }
+
+    [HttpDelete("{date}")]
+    public async Task<IActionResult> Delete([FromRoute] DateOnly date)
+    {
+        var userId = this.userManager.GetUserId(this.User);
+
+        if (userId == null)
+        {
+            return this.Unauthorized();
+        }
+
+        await this.stepsService.DeleteAsync(userId, date);
+
+        return this.NoContent();
+    }
 }

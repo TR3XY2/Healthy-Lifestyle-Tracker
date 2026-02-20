@@ -57,6 +57,22 @@ public class StepsService : IStepsService
             weight?.Date);
     }
 
+    public async Task<bool> DeleteAsync(string userId, DateOnly date)
+    {
+        var record = await this.dbContext.StepRecords
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.Date == date);
+
+        if (record == null)
+        {
+            return false;
+        }
+
+        this.dbContext.StepRecords.Remove(record);
+        await this.dbContext.SaveChangesAsync();
+
+        return true;
+    }
+
     public async Task<IEnumerable<StepsDayDto>> GetHistoryAsync(
         string userId,
         DateOnly? from,
