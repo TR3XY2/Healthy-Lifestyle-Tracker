@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { getProfile, updateHeight } from "@/api/profile.api";
+import { getStepsHistory } from "@/api/steps.api";
+import { getWeightHistory } from "@/api/weight.api";
+import { useAuth } from "@/context/AuthContext";
+import { useNutrition } from "@/hooks/useNutrition";
+import { getWeekRange } from "@/utils/week";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,30 +15,31 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { getProfile, updateHeight } from "@/api/profile.api";
-import { getStepsHistory } from "@/api/steps.api";
-import { getWeightHistory } from "@/api/weight.api";
-import { useAuth } from "@/context/AuthContext";
-import { getWeekRange } from "@/utils/week";
-import { router } from "expo-router";
 
 export default function Profile() {
   const { logout } = useAuth();
+  const { goals, updateGoals, refresh: refreshNutrition } = useNutrition();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingGoals, setSavingGoals] = useState(false);
   const [heightCm, setHeightCm] = useState<number | null>(null);
   const [heightInput, setHeightInput] = useState("");
+  const [stepsGoalInput, setStepsGoalInput] = useState("8000");
+  const [calorieGoalInput, setCalorieGoalInput] = useState("2200");
   const [latestWeight, setLatestWeight] = useState<number | null>(null);
   const [weekStepsTotal, setWeekStepsTotal] = useState(0);
 
   useEffect(() => {
-    loadProfileData();
-  }, []);
+    setStepsGoalInput(String(goals.stepsGoal));
+    setCalorieGoalInput(String(goals.calorieGoal));
+  }, [goals.calorieGoal, goals.stepsGoal]);
 
-  async function loadProfileData() {
+  const loadProfileData = useCallback(async () => {
     setLoading(true);
 
     try {
+      await refreshNutrition();
+
       const [profile, weights] = await Promise.all([
         getProfile(),
         getWeightHistory(),
@@ -60,7 +68,13 @@ export default function Profile() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [refreshNutrition]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileData();
+    }, [loadProfileData]),
+  );
 
   const onLogout = async () => {
     await logout();
@@ -120,6 +134,43 @@ export default function Profile() {
     }
   }
 
+  async function onSaveGoals() {
+    const nextStepsGoal = Number(stepsGoalInput.trim());
+    const nextCalorieGoal = Number(calorieGoalInput.trim());
+
+    if (
+      !Number.isInteger(nextStepsGoal) ||
+      nextStepsGoal < 1000 ||
+      nextStepsGoal > 50000
+    ) {
+      Alert.alert("Invalid steps goal", "Use a value from 1000 to 50000.");
+      return;
+    }
+
+    if (
+      !Number.isInteger(nextCalorieGoal) ||
+      nextCalorieGoal < 800 ||
+      nextCalorieGoal > 6000
+    ) {
+      Alert.alert("Invalid calorie goal", "Use a value from 800 to 6000.");
+      return;
+    }
+
+    setSavingGoals(true);
+
+    try {
+      await updateGoals({
+        stepsGoal: nextStepsGoal,
+        calorieGoal: nextCalorieGoal,
+      });
+      Alert.alert("Saved", "Daily goals updated.");
+    } catch (error: any) {
+      Alert.alert("Save failed", error?.message ?? "Please try again.");
+    } finally {
+      setSavingGoals(false);
+    }
+  }
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: "#f8fafc" }}
@@ -148,6 +199,74 @@ export default function Profile() {
         <ActivityIndicator style={{ marginTop: 20 }} />
       ) : (
         <>
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
+              Daily goals
+            </Text>
+            <Text style={{ color: "#64748b", marginBottom: 10 }}>
+              Default steps goal is 8000. Update your targets anytime.
+            </Text>
+
+            <TextInput
+              keyboardType="number-pad"
+              value={stepsGoalInput}
+              onChangeText={setStepsGoalInput}
+              placeholder="Steps goal"
+              style={{
+                borderWidth: 1,
+                borderColor: "#cbd5e1",
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 11,
+                fontSize: 16,
+                marginBottom: 8,
+              }}
+            />
+
+            <TextInput
+              keyboardType="number-pad"
+              value={calorieGoalInput}
+              onChangeText={setCalorieGoalInput}
+              placeholder="Calorie goal"
+              style={{
+                borderWidth: 1,
+                borderColor: "#cbd5e1",
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 11,
+                fontSize: 16,
+                marginBottom: 10,
+              }}
+            />
+
+            <Pressable
+              onPress={onSaveGoals}
+              disabled={savingGoals}
+              style={{
+                backgroundColor: savingGoals ? "#94a3b8" : "#0ea5e9",
+                borderRadius: 12,
+                paddingVertical: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: "white",
+                  textAlign: "center",
+                  fontWeight: "700",
+                }}
+              >
+                {savingGoals ? "Saving..." : "Save Goals"}
+              </Text>
+            </Pressable>
+          </View>
+
           <View
             style={{
               backgroundColor: "white",

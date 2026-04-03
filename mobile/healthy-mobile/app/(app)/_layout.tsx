@@ -1,6 +1,6 @@
-import { Tabs, Redirect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { Redirect, Tabs } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 
 export default function TabsLayout() {
@@ -35,6 +35,15 @@ export default function TabsLayout() {
           title: "Steps",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="walk" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="nutrition"
+        options={{
+          title: "Nutrition",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="restaurant" color={color} size={size} />
           ),
         }}
       />
