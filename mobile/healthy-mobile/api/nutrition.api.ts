@@ -3,6 +3,11 @@ import { ExternalProduct } from "@/types/nutrition";
 interface OpenFoodFactProduct {
   code?: string;
   product_name?: string;
+  product_name_en?: string;
+  image_front_small_url?: string;
+  image_front_url?: string;
+  image_url?: string;
+  brands?: string;
   nutriments?: {
     [key: string]: number | undefined;
     "energy-kcal_100g"?: number;
@@ -35,25 +40,32 @@ export async function searchProducts(
   const data = (await res.json()) as SearchResponse;
 
   return (data.products ?? [])
-    .map((product) => {
+    .map((product): ExternalProduct | null => {
       const calories = Number(product.nutriments?.["energy-kcal_100g"] ?? 0);
       const protein = Number(product.nutriments?.proteins_100g ?? 0);
       const carbs = Number(product.nutriments?.carbohydrates_100g ?? 0);
       const fats = Number(product.nutriments?.fat_100g ?? 0);
+      const name =
+        product.product_name?.trim() || product.product_name_en?.trim();
+      const imageUrl =
+        product.image_front_url ??
+        product.image_front_small_url ??
+        product.image_url;
 
-      if (!product.code || !product.product_name || calories <= 0) {
+      if (!product.code || !name || calories <= 0) {
         return null;
       }
 
       return {
         id: `off_${product.code}`,
-        name: product.product_name,
+        name,
         per100g: {
           calories,
           protein: Number(protein.toFixed(1)),
           carbs: Number(carbs.toFixed(1)),
           fats: Number(fats.toFixed(1)),
         },
+        imageUrl,
       };
     })
     .filter((item): item is ExternalProduct => item !== null);

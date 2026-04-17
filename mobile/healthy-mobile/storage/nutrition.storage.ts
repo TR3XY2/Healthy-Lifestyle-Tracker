@@ -68,6 +68,32 @@ export async function saveProduct(product: Product) {
   return next.products;
 }
 
+export async function deleteProduct(productId: string) {
+  const store = await readStore();
+  const nextProducts = store.products.filter(
+    (product) => product.id !== productId,
+  );
+  const nextMeals = store.meals
+    .map((meal) => ({
+      ...meal,
+      items: meal.items.filter((item) => item.productId !== productId),
+    }))
+    .filter((meal) => meal.items.length > 0);
+  const nextEntries = store.entries.filter(
+    (entry) => entry.productId !== productId,
+  );
+
+  const next = {
+    ...store,
+    products: nextProducts,
+    meals: nextMeals,
+    entries: nextEntries,
+  };
+
+  await writeStore(next);
+  return next;
+}
+
 export async function saveMeal(meal: Meal) {
   const store = await readStore();
   const withoutExisting = store.meals.filter((m) => m.id !== meal.id);
@@ -76,9 +102,35 @@ export async function saveMeal(meal: Meal) {
   return next.meals;
 }
 
+export async function deleteMeal(mealId: string) {
+  const store = await readStore();
+  const nextMeals = store.meals.filter((meal) => meal.id !== mealId);
+  const nextEntries = store.entries.filter((entry) => entry.mealId !== mealId);
+
+  const next = {
+    ...store,
+    meals: nextMeals,
+    entries: nextEntries,
+  };
+
+  await writeStore(next);
+  return next;
+}
+
 export async function saveEntry(entry: NutritionEntry) {
   const store = await readStore();
   const next = { ...store, entries: [entry, ...store.entries] };
+  await writeStore(next);
+  return next.entries;
+}
+
+export async function deleteEntry(entryId: string) {
+  const store = await readStore();
+  const next = {
+    ...store,
+    entries: store.entries.filter((entry) => entry.id !== entryId),
+  };
+
   await writeStore(next);
   return next.entries;
 }

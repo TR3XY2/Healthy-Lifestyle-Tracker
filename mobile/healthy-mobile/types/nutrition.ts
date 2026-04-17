@@ -10,7 +10,10 @@ export interface Product {
   name: string;
   source: "custom" | "api";
   per100g: MacroValues;
+  imageUrl?: string;
 }
+
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "other";
 
 export interface MealItem {
   productId: string;
@@ -31,6 +34,7 @@ export interface NutritionEntry {
   mealId?: string;
   grams?: number;
   servings?: number;
+  mealType?: MealType;
 }
 
 export interface NutritionGoals {
@@ -49,4 +53,5 @@ export interface ExternalProduct {
   id: string;
   name: string;
   per100g: MacroValues;
+  imageUrl?: string;
 }

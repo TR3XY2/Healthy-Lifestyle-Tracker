@@ -1,5 +1,8 @@
 import { searchProducts } from "@/api/nutrition.api";
 import {
+  deleteEntry,
+  deleteMeal,
+  deleteProduct,
   getNutritionStore,
   saveEntry,
   saveGoals,
@@ -11,6 +14,7 @@ import {
   MacroValues,
   Meal,
   MealItem,
+  MealType,
   NutritionEntry,
   NutritionGoals,
   Product,
@@ -91,6 +95,7 @@ export function useNutrition() {
         name: external.name,
         source: "api",
         per100g: external.per100g,
+        imageUrl: external.imageUrl,
       };
 
       const saved = await saveProduct(product);
@@ -129,13 +134,19 @@ export function useNutrition() {
   }, []);
 
   const addProductEntry = useCallback(
-    async (productId: string, grams: number, date = toDateOnly(new Date())) => {
+    async (
+      productId: string,
+      grams: number,
+      date = toDateOnly(new Date()),
+      mealType: MealType = "other",
+    ) => {
       const entry: NutritionEntry = {
         id: createId("entry"),
         date,
         type: "product",
         productId,
         grams,
+        mealType,
       };
 
       const saved = await saveEntry(entry);
@@ -146,13 +157,19 @@ export function useNutrition() {
   );
 
   const addMealEntry = useCallback(
-    async (mealId: string, servings: number, date = toDateOnly(new Date())) => {
+    async (
+      mealId: string,
+      servings: number,
+      date = toDateOnly(new Date()),
+      mealType: MealType = "other",
+    ) => {
       const entry: NutritionEntry = {
         id: createId("entry"),
         date,
         type: "meal",
         mealId,
         servings,
+        mealType,
       };
 
       const saved = await saveEntry(entry);
@@ -166,6 +183,24 @@ export function useNutrition() {
     const saved = await saveGoals(nextGoals);
     setGoals(saved);
     return saved;
+  }, []);
+
+  const removeProduct = useCallback(async (productId: string) => {
+    const next = await deleteProduct(productId);
+    setProducts(next.products);
+    setMeals(next.meals);
+    setEntries(next.entries);
+  }, []);
+
+  const removeMeal = useCallback(async (mealId: string) => {
+    const next = await deleteMeal(mealId);
+    setMeals(next.meals);
+    setEntries(next.entries);
+  }, []);
+
+  const removeEntry = useCallback(async (entryId: string) => {
+    const next = await deleteEntry(entryId);
+    setEntries(next);
   }, []);
 
   const today = toDateOnly(new Date());
@@ -243,5 +278,8 @@ export function useNutrition() {
     addProductEntry,
     addMealEntry,
     updateGoals,
+    removeProduct,
+    removeMeal,
+    removeEntry,
   };
 }
