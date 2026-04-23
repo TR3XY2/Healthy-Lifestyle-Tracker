@@ -1,11 +1,13 @@
 import { useNutrition } from "@/hooks/useNutrition";
 import {
   ExternalProduct,
+  InsightTone,
   MacroValues,
   MealType,
   NutritionEntry,
   Product,
 } from "@/types/nutrition";
+import { buildSmartInsights } from "@/utils/nutritionInsights";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
@@ -28,6 +30,7 @@ type EntrySummary = {
   title: string;
   detail: string;
   macros: MacroValues;
+  mealType?: MealType;
   mealTypeLabel: string;
   imageUrl?: string;
   sourceLabel: string;
@@ -39,6 +42,8 @@ type DateGroup = {
   items: EntrySummary[];
   totals: MacroValues;
 };
+
+type ProductLike = Product | ExternalProduct;
 
 const MEAL_TYPE_OPTIONS: { value: MealType; label: string }[] = [
   { value: "breakfast", label: "Breakfast" },
@@ -61,6 +66,12 @@ function toDateOnly(date: Date) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function addDays(dateString: string, deltaDays: number) {
+  const date = new Date(`${dateString}T12:00:00`);
+  date.setDate(date.getDate() + deltaDays);
+  return toDateOnly(date);
 }
 
 function formatDateLabel(date: string) {
@@ -111,7 +122,6 @@ function addMacro(base: MacroValues, extra: MacroValues): MacroValues {
 
 function parsePositiveNumber(value: string) {
   const parsed = Number(value);
-
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
@@ -128,7 +138,7 @@ export default function NutritionScreen() {
     products,
     meals,
     entries,
-    todayEntries,
+    goals,
     todaysTotals,
     refresh,
     searchExternalProducts,
@@ -142,21 +152,18 @@ export default function NutritionScreen() {
     removeEntry,
   } = useNutrition();
 
+  const today = useMemo(() => toDateOnly(new Date()), []);
+
+  const [selectedDate, setSelectedDate] = useState(today);
   const [searchInput, setSearchInput] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<ExternalProduct[]>([]);
   const [searchMessage, setSearchMessage] = useState<string | null>(null);
 
-  const [selectedDate, setSelectedDate] = useState<string>(
-    toDateOnly(new Date()),
-  );
-  const [selectedMealType, setSelectedMealType] =
-    useState<MealType>("breakfast");
-
-  const [activeProduct, setActiveProduct] = useState<ExternalProduct | null>(
-    null,
-  );
+  const [activeProduct, setActiveProduct] = useState<ProductLike | null>(null);
   const [activeProductGrams, setActiveProductGrams] = useState("100");
+  const [activeProductMealType, setActiveProductMealType] =
+    useState<MealType>("other");
 
   const [productName, setProductName] = useState("");
   const [productCalories, setProductCalories] = useState("");
@@ -173,7 +180,7 @@ export default function NutritionScreen() {
 
   const [entryType, setEntryType] = useState<"product" | "meal">("product");
   const [entryRefId, setEntryRefId] = useState<string | null>(null);
-  const [entryAmount, setEntryAmount] = useState("100");
+  const [entryAmount, setEntryAmount] = useState("1");
 
   useFocusEffect(
     useCallback(() => {
@@ -227,6 +234,7 @@ export default function NutritionScreen() {
           title: product?.name ?? "Deleted product",
           detail: `${amount}g`,
           macros: product ? scaleMacro(product.per100g, amount) : EMPTY_MACRO,
+          mealType: entry.mealType,
           mealTypeLabel,
           imageUrl: product?.imageUrl,
           sourceLabel: "Product",
@@ -251,6 +259,7 @@ export default function NutritionScreen() {
           carbs: Number((mealMacro.carbs * servings).toFixed(1)),
           fats: Number((mealMacro.fats * servings).toFixed(1)),
         },
+        mealType: entry.mealType,
         mealTypeLabel,
         sourceLabel: "Meal",
         type: entry.type,
@@ -276,7 +285,8 @@ export default function NutritionScreen() {
           (acc, item) => addMacro(acc, item.macros),
           EMPTY_MACRO,
         ),
-      }));
+      }))
+      .slice(0, 5);
   }, [entrySummaries]);
 
   const selectedDayEntries = useMemo(
@@ -293,7 +303,22 @@ export default function NutritionScreen() {
     [selectedDayEntries],
   );
 
-  const quickDateChips = historyGroups.slice(0, 6);
+  const smartInsights = useMemo(
+    () =>
+      buildSmartInsights({
+        selectedDate,
+        calorieGoal: goals.calorieGoal,
+        entries: entrySummaries.map((entry) => ({
+          date: entry.date,
+          macros: entry.macros,
+          mealType: entry.mealType,
+        })),
+      }),
+    [entrySummaries, goals.calorieGoal, selectedDate],
+  );
+
+  const recentProducts = products.slice(0, 5);
+  const recentMeals = meals.slice(0, 5);
 
   async function onSearchProducts() {
     if (!searchInput.trim()) {
@@ -307,7 +332,7 @@ export default function NutritionScreen() {
 
     try {
       const found = await searchExternalProducts(searchInput);
-      const nextResults = found.slice(0, 8);
+      const nextResults = found.slice(0, 5);
       setSearchResults(nextResults);
       setSearchMessage(
         nextResults.length === 0 ? "Nothing found. Try another name." : null,
@@ -320,36 +345,67 @@ export default function NutritionScreen() {
     }
   }
 
-  async function onSaveExternalProduct(item: ExternalProduct) {
+  function openProduct(product: ProductLike) {
+    setActiveProduct(product);
+    setActiveProductGrams("100");
+    setActiveProductMealType("other");
+  }
+
+  function closeProduct() {
+    setActiveProduct(null);
+    setActiveProductGrams("100");
+    setActiveProductMealType("other");
+  }
+
+  async function saveActiveProduct() {
+    if (!activeProduct) {
+      return;
+    }
+
+    if ("source" in activeProduct) {
+      return;
+    }
+
     try {
-      await importExternalProduct(item);
-      Alert.alert("Added", `${item.name} was added to your products.`);
+      const saved = await importExternalProduct(activeProduct);
+      setActiveProduct(saved);
+      Alert.alert("Saved", `${saved.name} was added to your library.`);
     } catch (error: any) {
-      Alert.alert("Add failed", error?.message ?? "Please try again.");
+      Alert.alert("Save failed", error?.message ?? "Please try again.");
     }
   }
 
-  async function onAddExternalProduct(item: ExternalProduct, grams: number) {
+  async function logActiveProduct() {
+    if (!activeProduct) {
+      return;
+    }
+
+    const grams = parsePositiveNumber(activeProductGrams);
     if (grams <= 0) {
       Alert.alert("Invalid amount", "Enter a grams value above zero.");
       return;
     }
 
     try {
-      const saved = await importExternalProduct(item);
-      await addProductEntry(saved.id, grams, selectedDate, selectedMealType);
-      Alert.alert(
-        "Added",
-        `${saved.name} was logged for ${formatDateLabel(selectedDate)}.`,
-      );
-      setActiveProduct(null);
-    } catch (error: any) {
-      Alert.alert("Add failed", error?.message ?? "Please try again.");
-    }
-  }
+      let productId = activeProduct.id;
 
-  async function onQuickAddExternalProduct(item: ExternalProduct) {
-    await onAddExternalProduct(item, 100);
+      if (!("source" in activeProduct)) {
+        const saved = await importExternalProduct(activeProduct);
+        productId = saved.id;
+        setActiveProduct(saved);
+      }
+
+      await addProductEntry(
+        productId,
+        grams,
+        selectedDate,
+        activeProductMealType,
+      );
+      Alert.alert("Added", `Logged for ${formatDateLabel(selectedDate)}.`);
+      closeProduct();
+    } catch (error: any) {
+      Alert.alert("Log failed", error?.message ?? "Please try again.");
+    }
   }
 
   async function onCreateCustomProduct() {
@@ -364,13 +420,7 @@ export default function NutritionScreen() {
     }
 
     try {
-      await addCustomProduct(productName, {
-        calories,
-        protein,
-        carbs,
-        fats,
-      });
-
+      await addCustomProduct(productName, { calories, protein, carbs, fats });
       setProductName("");
       setProductCalories("");
       setProductProtein("");
@@ -434,10 +484,15 @@ export default function NutritionScreen() {
           entryRefId,
           amount,
           selectedDate,
-          selectedMealType,
+          activeProductMealType,
         );
       } else {
-        await addMealEntry(entryRefId, amount, selectedDate, selectedMealType);
+        await addMealEntry(
+          entryRefId,
+          amount,
+          selectedDate,
+          activeProductMealType,
+        );
       }
 
       setEntryRefId(null);
@@ -463,7 +518,7 @@ export default function NutritionScreen() {
           onPress: () => {
             void removeProduct(product.id).then(() => {
               if (activeProduct?.id === product.id) {
-                setActiveProduct(null);
+                closeProduct();
               }
             });
           },
@@ -502,15 +557,16 @@ export default function NutritionScreen() {
     ]);
   }
 
-  function openProductDetails(product: ExternalProduct) {
-    setActiveProduct(product);
-    setActiveProductGrams("100");
+  function shiftSelectedDate(deltaDays: number) {
+    setSelectedDate(addDays(selectedDate, deltaDays));
   }
 
-  function closeProductDetails() {
-    setActiveProduct(null);
-    setActiveProductGrams("100");
+  function goToToday() {
+    setSelectedDate(today);
   }
+
+  const visibleProducts = recentProducts;
+  const visibleMeals = recentMeals;
 
   return (
     <View style={styles.screen}>
@@ -529,9 +585,29 @@ export default function NutritionScreen() {
 
           <Text style={styles.heroTitle}>{formatDateLabel(selectedDate)}</Text>
           <Text style={styles.heroSubtitle}>
-            Track products, meals, and history by day. Pick a date, log intake,
-            or open any product for a larger preview.
+            Use the buttons to move between days, then tap any product to open
+            the amount picker.
           </Text>
+
+          <View style={styles.dateNavRow}>
+            <Pressable
+              onPress={() => shiftSelectedDate(-1)}
+              style={styles.navButton}
+            >
+              <Ionicons name="chevron-back" size={16} color="#0f172a" />
+              <Text style={styles.navButtonText}>Previous</Text>
+            </Pressable>
+            <Pressable onPress={goToToday} style={styles.navButtonPrimary}>
+              <Text style={styles.navButtonPrimaryText}>Today</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => shiftSelectedDate(1)}
+              style={styles.navButton}
+            >
+              <Text style={styles.navButtonText}>Next</Text>
+              <Ionicons name="chevron-forward" size={16} color="#0f172a" />
+            </Pressable>
+          </View>
 
           <View style={styles.heroStatsRow}>
             <StatPill
@@ -552,38 +628,10 @@ export default function NutritionScreen() {
             />
           </View>
 
-          <TextInput
-            value={selectedDate}
-            onChangeText={setSelectedDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#94a3b8"
-            style={styles.heroDateInput}
-          />
-
-          <View style={styles.chipWrap}>
-            {quickDateChips.map((group) => (
-              <Pressable
-                key={group.date}
-                onPress={() => setSelectedDate(group.date)}
-                style={[
-                  styles.chip,
-                  selectedDate === group.date
-                    ? styles.chipActive
-                    : styles.chipInactive,
-                ]}
-              >
-                <Text
-                  style={
-                    selectedDate === group.date
-                      ? styles.chipActiveText
-                      : styles.chipText
-                  }
-                >
-                  {group.date.slice(5)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <Text style={styles.heroMeta}>
+            {selectedDayEntries.length} item
+            {selectedDayEntries.length === 1 ? "" : "s"} logged for this day.
+          </Text>
         </LinearGradient>
 
         {loading ? (
@@ -591,9 +639,49 @@ export default function NutritionScreen() {
         ) : (
           <>
             <SectionCard
-              title="Import products"
-              subtitle="Search OpenFoodFacts and preview items before adding them."
+              title="Products"
+              subtitle="Search, save, and tap to log from a single compact place."
             >
+              <View style={styles.insightsWrap}>
+                {smartInsights.map((insight) => (
+                  <View
+                    key={insight.id}
+                    style={[
+                      styles.insightCard,
+                      insight.tone === "positive"
+                        ? styles.insightCardPositive
+                        : insight.tone === "warning"
+                          ? styles.insightCardWarning
+                          : styles.insightCardInfo,
+                    ]}
+                  >
+                    <View style={styles.insightHeader}>
+                      <View
+                        style={[
+                          styles.insightBadge,
+                          insight.tone === "positive"
+                            ? styles.insightBadgePositive
+                            : insight.tone === "warning"
+                              ? styles.insightBadgeWarning
+                              : styles.insightBadgeInfo,
+                        ]}
+                      >
+                        <Ionicons
+                          name={getInsightIcon(insight.tone)}
+                          size={14}
+                          color={getInsightIconColor(insight.tone)}
+                        />
+                      </View>
+                      <Text style={styles.insightTitle}>{insight.title}</Text>
+                    </View>
+                    <Text style={styles.insightMessage}>{insight.message}</Text>
+                    {insight.action ? (
+                      <Text style={styles.insightAction}>{insight.action}</Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+
               <TextInput
                 value={searchInput}
                 onChangeText={setSearchInput}
@@ -615,7 +703,11 @@ export default function NutritionScreen() {
 
               <View style={styles.stackGap}>
                 {searchResults.map((result) => (
-                  <View key={result.id} style={styles.resultCard}>
+                  <Pressable
+                    key={result.id}
+                    onPress={() => openProduct(result)}
+                    style={styles.resultCard}
+                  >
                     {result.imageUrl ? (
                       <Image
                         source={{ uri: result.imageUrl }}
@@ -633,59 +725,74 @@ export default function NutritionScreen() {
                         />
                       </View>
                     )}
-
                     <View style={styles.resultBody}>
                       <Text style={styles.resultTitle}>{result.name}</Text>
                       <Text style={styles.resultMeta}>
                         {Math.round(result.per100g.calories)} kcal per 100g
                       </Text>
                       <Text style={styles.resultMeta}>
-                        P {result.per100g.protein}g · C {result.per100g.carbs}g
-                        · F {result.per100g.fats}g
+                        Tap to open amount picker
                       </Text>
                     </View>
-
-                    <View style={styles.resultActions}>
-                      <Pressable
-                        onPress={() => openProductDetails(result)}
-                        style={styles.iconButton}
-                      >
-                        <Ionicons
-                          name="information-circle-outline"
-                          size={20}
-                          color="#0f172a"
-                        />
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void onQuickAddExternalProduct(result)}
-                        style={styles.smallActionButton}
-                      >
-                        <Text style={styles.smallActionText}>+ Add</Text>
-                      </Pressable>
-                    </View>
-                  </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color="#64748b"
+                    />
+                  </Pressable>
                 ))}
               </View>
-            </SectionCard>
 
-            <SectionCard
-              title="Add custom product"
-              subtitle="Store your own nutrition values per 100g."
-            >
+              <Text style={styles.sectionLabel}>Recent library</Text>
+              {visibleProducts.length === 0 ? (
+                <Text style={styles.emptyText}>No products yet.</Text>
+              ) : (
+                <View style={styles.stackGap}>
+                  {visibleProducts.map((product) => (
+                    <View key={product.id} style={styles.libraryRow}>
+                      <Pressable
+                        style={styles.libraryMain}
+                        onPress={() => openProduct(product)}
+                      >
+                        <Text style={styles.libraryTitle}>{product.name}</Text>
+                        <Text style={styles.libraryMeta}>
+                          {Math.round(product.per100g.calories)} kcal ·{" "}
+                          {product.per100g.protein}P · {product.per100g.carbs}C
+                          · {product.per100g.fats}F
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => confirmDeleteProduct(product)}
+                        style={styles.iconButtonSoft}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={18}
+                          color="#ef4444"
+                        />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <Text style={[styles.sectionLabel, { marginTop: 12 }]}>
+                Custom product
+              </Text>
               <TextInput
                 value={productName}
                 onChangeText={setProductName}
                 placeholder="Product name"
                 style={styles.input}
               />
-              <TextInput
-                value={productCalories}
-                onChangeText={setProductCalories}
-                keyboardType="decimal-pad"
-                placeholder="Calories"
-                style={styles.input}
-              />
               <View style={styles.inlineRow}>
+                <TextInput
+                  value={productCalories}
+                  onChangeText={setProductCalories}
+                  keyboardType="decimal-pad"
+                  placeholder="Calories"
+                  style={[styles.input, styles.flexOne]}
+                />
                 <TextInput
                   value={productProtein}
                   onChangeText={setProductProtein}
@@ -693,6 +800,8 @@ export default function NutritionScreen() {
                   placeholder="Protein"
                   style={[styles.input, styles.flexOne]}
                 />
+              </View>
+              <View style={styles.inlineRow}>
                 <TextInput
                   value={productCarbs}
                   onChangeText={setProductCarbs}
@@ -710,15 +819,17 @@ export default function NutritionScreen() {
               </View>
               <Pressable
                 onPress={onCreateCustomProduct}
-                style={styles.primaryButton}
+                style={styles.secondaryButton}
               >
-                <Text style={styles.primaryButtonText}>Save product</Text>
+                <Text style={styles.secondaryButtonText}>
+                  Save custom product
+                </Text>
               </Pressable>
             </SectionCard>
 
             <SectionCard
-              title="Create meal"
-              subtitle="Build meals from products, then log them later."
+              title="Meals"
+              subtitle="Build meals with a few recent products, then log meals from the short recent list."
             >
               <TextInput
                 value={mealName}
@@ -726,9 +837,9 @@ export default function NutritionScreen() {
                 placeholder="Meal name"
                 style={styles.input}
               />
-              <Text style={styles.sectionLabel}>Select product</Text>
+              <Text style={styles.sectionLabel}>Recent products</Text>
               <View style={styles.chipWrap}>
-                {products.slice(0, 20).map((product) => (
+                {visibleProducts.map((product) => (
                   <Pressable
                     key={product.id}
                     onPress={() => setMealProductId(product.id)}
@@ -751,12 +862,11 @@ export default function NutritionScreen() {
                   </Pressable>
                 ))}
               </View>
-
               <TextInput
                 value={mealGrams}
                 onChangeText={setMealGrams}
                 keyboardType="decimal-pad"
-                placeholder="Grams in meal"
+                placeholder="Grams"
                 style={styles.input}
               />
               <Pressable onPress={onAddMealItem} style={styles.secondaryButton}>
@@ -793,50 +903,47 @@ export default function NutritionScreen() {
               <Pressable onPress={onCreateMeal} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>Save meal</Text>
               </Pressable>
-            </SectionCard>
 
-            <SectionCard
-              title="Log intake"
-              subtitle="Pick a date, choose breakfast or dinner, and add a product or meal."
-            >
-              <TextInput
-                value={selectedDate}
-                onChangeText={setSelectedDate}
-                placeholder="YYYY-MM-DD"
-                style={styles.input}
-              />
+              <Text style={[styles.sectionLabel, { marginTop: 12 }]}>
+                Recent meals
+              </Text>
+              {visibleMeals.length === 0 ? (
+                <Text style={styles.emptyText}>No meals yet.</Text>
+              ) : (
+                <View style={styles.stackGap}>
+                  {visibleMeals.map((meal) => (
+                    <View key={meal.id} style={styles.libraryRow}>
+                      <Pressable
+                        style={styles.libraryMain}
+                        onPress={() => setEntryRefId(meal.id)}
+                      >
+                        <Text style={styles.libraryTitle}>{meal.name}</Text>
+                        <Text style={styles.libraryMeta}>
+                          {meal.items.length} item
+                          {meal.items.length === 1 ? "" : "s"}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => confirmDeleteMeal(meal.id, meal.name)}
+                        style={styles.iconButtonSoft}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={18}
+                          color="#ef4444"
+                        />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
 
-              <View style={styles.chipWrap}>
-                {MEAL_TYPE_OPTIONS.map((option) => (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setSelectedMealType(option.value)}
-                    style={[
-                      styles.chip,
-                      selectedMealType === option.value
-                        ? styles.chipActive
-                        : styles.chipInactive,
-                    ]}
-                  >
-                    <Text
-                      style={
-                        selectedMealType === option.value
-                          ? styles.chipActiveText
-                          : styles.chipText
-                      }
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
+              <Text style={[styles.sectionLabel, { marginTop: 12 }]}>
+                Log intake
+              </Text>
               <View style={styles.inlineRow}>
                 <Pressable
-                  onPress={() => {
-                    setEntryType("product");
-                    setEntryAmount("100");
-                  }}
+                  onPress={() => setEntryType("product")}
                   style={[
                     styles.flexOne,
                     entryType === "product"
@@ -855,10 +962,7 @@ export default function NutritionScreen() {
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => {
-                    setEntryType("meal");
-                    setEntryAmount("1");
-                  }}
+                  onPress={() => setEntryType("meal")}
                   style={[
                     styles.flexOne,
                     entryType === "meal"
@@ -877,7 +981,6 @@ export default function NutritionScreen() {
                   </Text>
                 </Pressable>
               </View>
-
               <TextInput
                 editable={false}
                 value={
@@ -891,16 +994,15 @@ export default function NutritionScreen() {
                 }
                 placeholder={
                   entryType === "product"
-                    ? "Select product below"
-                    : "Select meal below"
+                    ? "Tap a recent product"
+                    : "Tap a recent meal"
                 }
                 style={[styles.input, styles.readOnlyInput]}
               />
 
               <View style={styles.chipWrap}>
-                {(entryType === "product" ? products : meals)
-                  .slice(0, 20)
-                  .map((item) => (
+                {(entryType === "product" ? visibleProducts : visibleMeals).map(
+                  (item) => (
                     <Pressable
                       key={item.id}
                       onPress={() => setEntryRefId(item.id)}
@@ -921,7 +1023,8 @@ export default function NutritionScreen() {
                         {item.name}
                       </Text>
                     </Pressable>
-                  ))}
+                  ),
+                )}
               </View>
 
               <TextInput
@@ -939,100 +1042,8 @@ export default function NutritionScreen() {
             </SectionCard>
 
             <SectionCard
-              title="Your library"
-              subtitle="Delete any product or meal from here."
-            >
-              <Text style={styles.sectionLabel}>Products</Text>
-              {products.length === 0 ? (
-                <Text style={styles.emptyText}>No products yet.</Text>
-              ) : (
-                <View style={styles.stackGap}>
-                  {products.map((product) => (
-                    <View key={product.id} style={styles.libraryRow}>
-                      {product.imageUrl ? (
-                        <Image
-                          source={{ uri: product.imageUrl }}
-                          style={styles.libraryThumb}
-                          contentFit="cover"
-                        />
-                      ) : (
-                        <View
-                          style={[
-                            styles.libraryThumb,
-                            styles.resultImageFallback,
-                          ]}
-                        >
-                          <Ionicons
-                            name="nutrition-outline"
-                            size={18}
-                            color="#475569"
-                          />
-                        </View>
-                      )}
-                      <View style={styles.libraryBody}>
-                        <Text style={styles.libraryTitle}>{product.name}</Text>
-                        <Text style={styles.libraryMeta}>
-                          {Math.round(product.per100g.calories)} kcal ·{" "}
-                          {product.per100g.protein}P · {product.per100g.carbs}C
-                          · {product.per100g.fats}F
-                        </Text>
-                      </View>
-                      <Pressable
-                        onPress={() => confirmDeleteProduct(product)}
-                        style={styles.iconButtonSoft}
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={18}
-                          color="#ef4444"
-                        />
-                      </Pressable>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              <Text style={[styles.sectionLabel, { marginTop: 12 }]}>
-                Meals
-              </Text>
-              {meals.length === 0 ? (
-                <Text style={styles.emptyText}>No meals yet.</Text>
-              ) : (
-                <View style={styles.stackGap}>
-                  {meals.map((meal) => {
-                    const mealMacro = mealMacroMap.get(meal.id) ?? EMPTY_MACRO;
-
-                    return (
-                      <View key={meal.id} style={styles.libraryRow}>
-                        <View style={styles.libraryBody}>
-                          <Text style={styles.libraryTitle}>{meal.name}</Text>
-                          <Text style={styles.libraryMeta}>
-                            {Math.round(mealMacro.calories)} kcal ·{" "}
-                            {mealMacro.protein.toFixed(1)}P ·{" "}
-                            {mealMacro.carbs.toFixed(1)}C ·{" "}
-                            {mealMacro.fats.toFixed(1)}F
-                          </Text>
-                        </View>
-                        <Pressable
-                          onPress={() => confirmDeleteMeal(meal.id, meal.name)}
-                          style={styles.iconButtonSoft}
-                        >
-                          <Ionicons
-                            name="trash-outline"
-                            size={18}
-                            color="#ef4444"
-                          />
-                        </Pressable>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </SectionCard>
-
-            <SectionCard
               title="History"
-              subtitle="Browse what you ate on previous days and remove anything you logged by mistake."
+              subtitle="A compact view of the last few days so the page stays readable."
             >
               {historyGroups.length === 0 ? (
                 <Text style={styles.emptyText}>No nutrition history yet.</Text>
@@ -1060,7 +1071,7 @@ export default function NutritionScreen() {
                       </View>
 
                       <View style={styles.stackGap}>
-                        {group.items.map((item) => (
+                        {group.items.slice(0, 3).map((item) => (
                           <View key={item.id} style={styles.historyRow}>
                             {item.imageUrl ? (
                               <Image
@@ -1115,22 +1126,6 @@ export default function NutritionScreen() {
                 </View>
               )}
             </SectionCard>
-
-            <SectionCard
-              title="Today snapshot"
-              subtitle="Quick view of what was recorded for the current day."
-            >
-              <Text style={styles.emptyText}>
-                {todayEntries.length} logged item
-                {todayEntries.length === 1 ? "" : "s"}
-              </Text>
-              <Text style={styles.libraryMeta}>
-                {Math.round(todaysTotals.calories)} kcal ·{" "}
-                {todaysTotals.protein.toFixed(1)}P ·{" "}
-                {todaysTotals.carbs.toFixed(1)}C ·{" "}
-                {todaysTotals.fats.toFixed(1)}F
-              </Text>
-            </SectionCard>
           </>
         )}
       </ScrollView>
@@ -1139,7 +1134,7 @@ export default function NutritionScreen() {
         transparent
         visible={activeProduct !== null}
         animationType="fade"
-        onRequestClose={closeProductDetails}
+        onRequestClose={closeProduct}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -1148,7 +1143,7 @@ export default function NutritionScreen() {
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>{activeProduct.name}</Text>
                   <Pressable
-                    onPress={closeProductDetails}
+                    onPress={closeProduct}
                     style={styles.iconButtonSoft}
                   >
                     <Ionicons name="close-outline" size={22} color="#0f172a" />
@@ -1184,6 +1179,31 @@ export default function NutritionScreen() {
                   {activeProduct.per100g.fats}g
                 </Text>
 
+                <View style={styles.chipWrap}>
+                  {MEAL_TYPE_OPTIONS.map((option) => (
+                    <Pressable
+                      key={option.value}
+                      onPress={() => setActiveProductMealType(option.value)}
+                      style={[
+                        styles.chip,
+                        activeProductMealType === option.value
+                          ? styles.chipActive
+                          : styles.chipInactive,
+                      ]}
+                    >
+                      <Text
+                        style={
+                          activeProductMealType === option.value
+                            ? styles.chipActiveText
+                            : styles.chipText
+                        }
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
                 <TextInput
                   value={activeProductGrams}
                   onChangeText={setActiveProductGrams}
@@ -1193,23 +1213,20 @@ export default function NutritionScreen() {
                 />
 
                 <View style={styles.modalActionsRow}>
+                  {!("source" in activeProduct) ? (
+                    <Pressable
+                      onPress={() => void saveActiveProduct()}
+                      style={styles.secondaryButton}
+                    >
+                      <Text style={styles.secondaryButtonText}>Save</Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
-                    onPress={() => void onSaveExternalProduct(activeProduct)}
-                    style={styles.secondaryButton}
-                  >
-                    <Text style={styles.secondaryButtonText}>Save</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() =>
-                      void onAddExternalProduct(
-                        activeProduct,
-                        parsePositiveNumber(activeProductGrams),
-                      )
-                    }
+                    onPress={() => void logActiveProduct()}
                     style={styles.primaryButton}
                   >
                     <Text style={styles.primaryButtonText}>
-                      Add to selected day
+                      Log selected amount
                     </Text>
                   </Pressable>
                 </View>
@@ -1229,7 +1246,7 @@ function SectionCard({
 }: {
   title: string;
   subtitle: string;
-  children: React.ReactNode;
+  children: any;
 }) {
   return (
     <View style={styles.sectionCard}>
@@ -1238,6 +1255,30 @@ function SectionCard({
       <View style={{ marginTop: 12 }}>{children}</View>
     </View>
   );
+}
+
+function getInsightIcon(tone: InsightTone): "sparkles" | "warning" | "information-circle" {
+  if (tone === "positive") {
+    return "sparkles";
+  }
+
+  if (tone === "warning") {
+    return "warning";
+  }
+
+  return "information-circle";
+}
+
+function getInsightIconColor(tone: InsightTone) {
+  if (tone === "positive") {
+    return "#166534";
+  }
+
+  if (tone === "warning") {
+    return "#9a3412";
+  }
+
+  return "#1d4ed8";
 }
 
 function StatPill({ label, value }: { label: string; value: string }) {
@@ -1250,15 +1291,8 @@ function StatPill({ label, value }: { label: string; value: string }) {
 }
 
 const styles = {
-  screen: {
-    flex: 1,
-    backgroundColor: "#eef2ff",
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 40,
-    gap: 12,
-  },
+  screen: { flex: 1, backgroundColor: "#eef2ff" },
+  content: { padding: 16, paddingBottom: 40, gap: 12 },
   heroCard: {
     borderRadius: 28,
     padding: 18,
@@ -1295,32 +1329,36 @@ const styles = {
     fontSize: 12,
     fontWeight: "700" as const,
   },
-  heroTitle: {
-    color: "#ffffff",
-    fontSize: 28,
-    fontWeight: "800" as const,
+  heroTitle: { color: "#ffffff", fontSize: 28, fontWeight: "800" as const },
+  heroSubtitle: { color: "#dbeafe", marginTop: 8, lineHeight: 20 },
+  dateNavRow: { flexDirection: "row" as const, gap: 8, marginTop: 14 },
+  navButton: {
+    flex: 1,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 14,
+    paddingVertical: 10,
   },
-  heroSubtitle: {
-    color: "#dbeafe",
-    marginTop: 8,
-    lineHeight: 20,
+  navButtonText: { color: "#0f172a", fontWeight: "700" as const },
+  navButtonPrimary: {
+    flex: 1,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "#0f172a",
+    borderRadius: 14,
+    paddingVertical: 10,
   },
+  navButtonPrimaryText: { color: "#ffffff", fontWeight: "700" as const },
   heroStatsRow: {
     flexDirection: "row" as const,
     flexWrap: "wrap" as const,
     gap: 8,
     marginTop: 14,
   },
-  heroDateInput: {
-    marginTop: 14,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderColor: "rgba(255,255,255,0.2)",
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: "#ffffff",
-  },
+  heroMeta: { color: "#dbeafe", marginTop: 12, fontSize: 12 },
   sectionCard: {
     backgroundColor: "#ffffff",
     borderRadius: 22,
@@ -1330,16 +1368,8 @@ const styles = {
     shadowRadius: 14,
     elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "800" as const,
-    color: "#0f172a",
-  },
-  sectionSubtitle: {
-    color: "#64748b",
-    marginTop: 4,
-    lineHeight: 18,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: "800" as const, color: "#0f172a" },
+  sectionSubtitle: { color: "#64748b", marginTop: 4, lineHeight: 18 },
   sectionLabel: {
     color: "#334155",
     fontWeight: "700" as const,
@@ -1354,17 +1384,9 @@ const styles = {
     marginBottom: 10,
     backgroundColor: "#ffffff",
   },
-  readOnlyInput: {
-    backgroundColor: "#f8fafc",
-    color: "#0f172a",
-  },
-  inlineRow: {
-    flexDirection: "row" as const,
-    gap: 8,
-  },
-  flexOne: {
-    flex: 1,
-  },
+  readOnlyInput: { backgroundColor: "#f8fafc", color: "#0f172a" },
+  inlineRow: { flexDirection: "row" as const, gap: 8 },
+  flexOne: { flex: 1 },
   primaryButton: {
     backgroundColor: "#0f172a",
     borderRadius: 14,
@@ -1401,32 +1423,13 @@ const styles = {
     paddingVertical: 8,
     borderWidth: 1,
   },
-  chipActive: {
-    borderColor: "#0f172a",
-    backgroundColor: "#0f172a",
-  },
-  chipInactive: {
-    borderColor: "#cbd5e1",
-    backgroundColor: "#f8fafc",
-  },
-  chipText: {
-    fontSize: 12,
-    color: "#0f172a",
-  },
+  chipActive: { borderColor: "#0f172a", backgroundColor: "#0f172a" },
+  chipInactive: { borderColor: "#cbd5e1", backgroundColor: "#f8fafc" },
+  chipText: { fontSize: 12, color: "#0f172a" },
   chipActiveText: {
     fontSize: 12,
     color: "#ffffff",
     fontWeight: "700" as const,
-  },
-  resultList: {
-    gap: 10,
-    marginTop: 8,
-  },
-  stackGap: {
-    gap: 8,
-  },
-  stackGapLarge: {
-    gap: 12,
   },
   resultCard: {
     flexDirection: "row" as const,
@@ -1439,8 +1442,8 @@ const styles = {
     borderColor: "#e2e8f0",
   },
   resultImage: {
-    width: 62,
-    height: 62,
+    width: 54,
+    height: 54,
     borderRadius: 16,
     backgroundColor: "#e2e8f0",
   },
@@ -1448,31 +1451,89 @@ const styles = {
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
-  resultBody: {
-    flex: 1,
-  },
+  resultBody: { flex: 1 },
   resultTitle: {
     color: "#0f172a",
     fontWeight: "800" as const,
     marginBottom: 2,
   },
-  resultMeta: {
-    color: "#475569",
-    marginTop: 2,
-    fontSize: 12,
+  resultMeta: { color: "#475569", marginTop: 2, fontSize: 12 },
+  stackGap: { gap: 8 },
+  stackGapLarge: { gap: 12 },
+  emptyText: { color: "#64748b" },
+  subtleMessage: { marginTop: 8, color: "#64748b" },
+  insightsWrap: {
+    gap: 8,
+    marginBottom: 10,
   },
-  resultActions: {
-    alignItems: "flex-end" as const,
+  insightCard: {
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+  },
+  insightCardPositive: {
+    backgroundColor: "#ecfdf5",
+    borderColor: "#bbf7d0",
+  },
+  insightCardWarning: {
+    backgroundColor: "#fff7ed",
+    borderColor: "#fed7aa",
+  },
+  insightCardInfo: {
+    backgroundColor: "#eff6ff",
+    borderColor: "#bfdbfe",
+  },
+  insightHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
     gap: 8,
   },
-  iconButton: {
-    width: 34,
-    height: 34,
+  insightBadge: {
+    width: 22,
+    height: 22,
     borderRadius: 999,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: "#e2e8f0",
   },
+  insightBadgePositive: {
+    backgroundColor: "#dcfce7",
+  },
+  insightBadgeWarning: {
+    backgroundColor: "#ffedd5",
+  },
+  insightBadgeInfo: {
+    backgroundColor: "#dbeafe",
+  },
+  insightTitle: {
+    flex: 1,
+    color: "#0f172a",
+    fontWeight: "700" as const,
+    fontSize: 13,
+  },
+  insightMessage: {
+    color: "#334155",
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  insightAction: {
+    color: "#0f172a",
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: "700" as const,
+  },
+  libraryRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  libraryMain: { flex: 1 },
+  libraryTitle: { color: "#0f172a", fontWeight: "700" as const },
+  libraryMeta: { color: "#64748b", fontSize: 12, marginTop: 2 },
   iconButtonSoft: {
     width: 34,
     height: 34,
@@ -1480,24 +1541,6 @@ const styles = {
     alignItems: "center" as const,
     justifyContent: "center" as const,
     backgroundColor: "#f1f5f9",
-  },
-  smallActionButton: {
-    backgroundColor: "#0f172a",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  smallActionText: {
-    color: "#ffffff",
-    fontWeight: "700" as const,
-    fontSize: 12,
-  },
-  subtleMessage: {
-    marginTop: 8,
-    color: "#64748b",
-  },
-  emptyText: {
-    color: "#64748b",
   },
   listRowSoft: {
     flexDirection: "row" as const,
@@ -1508,37 +1551,7 @@ const styles = {
     borderRadius: 14,
     backgroundColor: "#f8fafc",
   },
-  listRowText: {
-    color: "#0f172a",
-    flex: 1,
-    paddingRight: 8,
-  },
-  libraryRow: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
-  },
-  libraryThumb: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#e2e8f0",
-  },
-  libraryBody: {
-    flex: 1,
-  },
-  libraryTitle: {
-    color: "#0f172a",
-    fontWeight: "700" as const,
-  },
-  libraryMeta: {
-    color: "#64748b",
-    fontSize: 12,
-    marginTop: 2,
-  },
+  listRowText: { color: "#0f172a", flex: 1, paddingRight: 8 },
   groupCard: {
     padding: 14,
     borderRadius: 18,
@@ -1552,16 +1565,8 @@ const styles = {
     justifyContent: "space-between" as const,
     marginBottom: 10,
   },
-  groupTitle: {
-    color: "#0f172a",
-    fontWeight: "800" as const,
-    fontSize: 15,
-  },
-  groupMeta: {
-    color: "#64748b",
-    marginTop: 3,
-    fontSize: 12,
-  },
+  groupTitle: { color: "#0f172a", fontWeight: "800" as const, fontSize: 15 },
+  groupMeta: { color: "#64748b", marginTop: 3, fontSize: 12 },
   historyRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -1576,17 +1581,19 @@ const styles = {
     borderRadius: 12,
     backgroundColor: "#e2e8f0",
   },
-  historyBody: {
-    flex: 1,
+  historyBody: { flex: 1 },
+  historyTitle: { color: "#0f172a", fontWeight: "700" as const },
+  historyMeta: { color: "#64748b", fontSize: 12, marginTop: 2 },
+  smallActionButton: {
+    backgroundColor: "#0f172a",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  historyTitle: {
-    color: "#0f172a",
+  smallActionText: {
+    color: "#ffffff",
     fontWeight: "700" as const,
-  },
-  historyMeta: {
-    color: "#64748b",
     fontSize: 12,
-    marginTop: 2,
   },
   modalBackdrop: {
     flex: 1,
@@ -1594,11 +1601,7 @@ const styles = {
     justifyContent: "center" as const,
     padding: 16,
   },
-  modalCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    padding: 16,
-  },
+  modalCard: { backgroundColor: "#ffffff", borderRadius: 24, padding: 16 },
   modalHeader: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -1612,20 +1615,14 @@ const styles = {
     fontSize: 20,
     fontWeight: "800" as const,
   },
-  modalVisualWrap: {
-    marginBottom: 12,
-  },
+  modalVisualWrap: { marginBottom: 12 },
   modalImage: {
     width: "100%",
     height: 220,
     borderRadius: 18,
     backgroundColor: "#e2e8f0",
   },
-  modalActionsRow: {
-    flexDirection: "row" as const,
-    gap: 10,
-    marginTop: 4,
-  },
+  modalActionsRow: { flexDirection: "row" as const, gap: 10, marginTop: 4 },
   statPill: {
     backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 18,

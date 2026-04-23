@@ -55,3 +55,13 @@ export interface ExternalProduct {
   per100g: MacroValues;
   imageUrl?: string;
 }
+
+export type InsightTone = "positive" | "warning" | "info";
+
+export interface NutritionInsight {
+  id: string;
+  title: string;
+  message: string;
+  action?: string;
+  tone: InsightTone;
+}
