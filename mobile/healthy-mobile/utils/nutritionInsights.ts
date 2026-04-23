@@ -49,7 +49,10 @@ function average(values: number[]) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function getLongestCurrentStreak(activeDates: Set<string>, selectedDate: string) {
+function getLongestCurrentStreak(
+  activeDates: Set<string>,
+  selectedDate: string,
+) {
   let streak = 0;
   let cursor = selectedDate;
 
@@ -61,7 +64,11 @@ function getLongestCurrentStreak(activeDates: Set<string>, selectedDate: string)
   return streak;
 }
 
-export function buildSmartInsights({ selectedDate, calorieGoal, entries }: BuildInsightsInput): NutritionInsight[] {
+export function buildSmartInsights({
+  selectedDate,
+  calorieGoal,
+  entries,
+}: BuildInsightsInput): NutritionInsight[] {
   const insights: NutritionInsight[] = [];
 
   const totalsByDate = new Map<string, MacroValues>();
@@ -72,7 +79,10 @@ export function buildSmartInsights({ selectedDate, calorieGoal, entries }: Build
     totalsByDate.set(entry.date, addMacro(current, entry.macros));
 
     if (entry.mealType && entry.mealType !== "other") {
-      mealTypeCount.set(entry.mealType, (mealTypeCount.get(entry.mealType) ?? 0) + 1);
+      mealTypeCount.set(
+        entry.mealType,
+        (mealTypeCount.get(entry.mealType) ?? 0) + 1,
+      );
     }
   }
 
@@ -83,7 +93,8 @@ export function buildSmartInsights({ selectedDate, calorieGoal, entries }: Build
     insights.push({
       id: "start-day",
       title: "Start this day with one log",
-      message: "No entries for this date yet. Add one product or meal to unlock deeper insights.",
+      message:
+        "No entries for this date yet. Add one product or meal to unlock deeper insights.",
       action: "Log your first item for this day",
       tone: "info",
     });
@@ -139,14 +150,24 @@ export function buildSmartInsights({ selectedDate, calorieGoal, entries }: Build
     }
   }
 
-  const last7Days = Array.from({ length: 7 }, (_, index) => addDays(selectedDate, -index));
-  const previous7Days = Array.from({ length: 7 }, (_, index) => addDays(selectedDate, -(index + 7)));
-  const last7AverageCalories = average(last7Days.map((date) => totalsByDate.get(date)?.calories ?? 0));
-  const prev7AverageCalories = average(previous7Days.map((date) => totalsByDate.get(date)?.calories ?? 0));
+  const last7Days = Array.from({ length: 7 }, (_, index) =>
+    addDays(selectedDate, -index),
+  );
+  const previous7Days = Array.from({ length: 7 }, (_, index) =>
+    addDays(selectedDate, -(index + 7)),
+  );
+  const last7AverageCalories = average(
+    last7Days.map((date) => totalsByDate.get(date)?.calories ?? 0),
+  );
+  const prev7AverageCalories = average(
+    previous7Days.map((date) => totalsByDate.get(date)?.calories ?? 0),
+  );
 
   if (last7AverageCalories > 0) {
     if (prev7AverageCalories > 0) {
-      const trendDelta = ((last7AverageCalories - prev7AverageCalories) / prev7AverageCalories) * 100;
+      const trendDelta =
+        ((last7AverageCalories - prev7AverageCalories) / prev7AverageCalories) *
+        100;
       const trendUp = trendDelta > 8;
       const trendDown = trendDelta < -8;
 
@@ -202,7 +223,9 @@ export function buildSmartInsights({ selectedDate, calorieGoal, entries }: Build
   }
 
   if (mealTypeCount.size > 0) {
-    const sortedMealTypes = Array.from(mealTypeCount.entries()).sort((a, b) => b[1] - a[1]);
+    const sortedMealTypes = Array.from(mealTypeCount.entries()).sort(
+      (a, b) => b[1] - a[1],
+    );
     const [topMealType, topCount] = sortedMealTypes[0];
     const totalTagged = sortedMealTypes.reduce((sum, item) => sum + item[1], 0);
     const topRatio = topCount / totalTagged;
@@ -222,7 +245,8 @@ export function buildSmartInsights({ selectedDate, calorieGoal, entries }: Build
     insights.push({
       id: "fallback",
       title: "Log more data for smart insights",
-      message: "Add meals and products for a few days to unlock trend and consistency intelligence.",
+      message:
+        "Add meals and products for a few days to unlock trend and consistency intelligence.",
       tone: "info",
     });
   }

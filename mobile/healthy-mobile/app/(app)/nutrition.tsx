@@ -1,4 +1,5 @@
 import { useNutrition } from "@/hooks/useNutrition";
+import { getProductByBarcode } from "@/api/nutrition.api";
 import {
   ExternalProduct,
   InsightTone,
@@ -9,6 +10,7 @@ import {
 } from "@/types/nutrition";
 import { buildSmartInsights } from "@/utils/nutritionInsights";
 import { Ionicons } from "@expo/vector-icons";
+import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
@@ -17,6 +19,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -159,6 +162,10 @@ export default function NutritionScreen() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<ExternalProduct[]>([]);
   const [searchMessage, setSearchMessage] = useState<string | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
+  const [isBarcodeLookupLoading, setIsBarcodeLookupLoading] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const [activeProduct, setActiveProduct] = useState<ProductLike | null>(null);
   const [activeProductGrams, setActiveProductGrams] = useState("100");
@@ -342,6 +349,66 @@ export default function NutritionScreen() {
       setSearchMessage(error?.message ?? "Search failed. Please try again.");
     } finally {
       setSearchLoading(false);
+    }
+  }
+
+  async function onOpenScanner() {
+    if (Platform.OS === "web") {
+      Alert.alert("Scanner unavailable", "Barcode scanner works on iOS/Android devices.");
+      return;
+    }
+
+    if (!cameraPermission?.granted) {
+      const permission = await requestCameraPermission();
+      if (!permission.granted) {
+        Alert.alert("Camera permission needed", "Allow camera access to scan product barcodes.");
+        return;
+      }
+    }
+
+    setHasScanned(false);
+    setIsScannerOpen(true);
+  }
+
+  function closeScanner() {
+    setIsScannerOpen(false);
+    setHasScanned(false);
+    setIsBarcodeLookupLoading(false);
+  }
+
+  async function onBarcodeScanned(event: BarcodeScanningResult) {
+    if (hasScanned || isBarcodeLookupLoading) {
+      return;
+    }
+
+    const code = event.data?.trim();
+
+    if (!code) {
+      return;
+    }
+
+    setHasScanned(true);
+    setIsBarcodeLookupLoading(true);
+
+    try {
+      const product = await getProductByBarcode(code);
+
+      if (!product) {
+        Alert.alert("Not found", "No product found for this barcode.");
+        setHasScanned(false);
+        return;
+      }
+
+      setSearchInput(product.name);
+      setSearchResults([product]);
+      setSearchMessage(null);
+      closeScanner();
+      openProduct(product);
+    } catch (error: any) {
+      Alert.alert("Scan failed", error?.message ?? "Could not read this barcode.");
+      setHasScanned(false);
+    } finally {
+      setIsBarcodeLookupLoading(false);
     }
   }
 
@@ -688,6 +755,10 @@ export default function NutritionScreen() {
                 placeholder="Search food products"
                 style={styles.input}
               />
+              <Pressable onPress={onOpenScanner} style={styles.scanButton}>
+                <Ionicons name="barcode-outline" size={16} color="#0f172a" />
+                <Text style={styles.scanButtonText}>Scan barcode</Text>
+              </Pressable>
               <Pressable
                 onPress={onSearchProducts}
                 style={styles.primaryButton}
@@ -1235,6 +1306,65 @@ export default function NutritionScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        transparent
+        visible={isScannerOpen}
+        animationType="fade"
+        onRequestClose={closeScanner}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.scannerCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Scan barcode</Text>
+              <Pressable onPress={closeScanner} style={styles.iconButtonSoft}>
+                <Ionicons name="close-outline" size={22} color="#0f172a" />
+              </Pressable>
+            </View>
+
+            <Text style={styles.scannerHint}>
+              Place the barcode inside the frame. We will find the product and open it for logging.
+            </Text>
+
+            <View style={styles.scannerViewWrap}>
+              <CameraView
+                style={styles.scannerView}
+                facing="back"
+                barcodeScannerSettings={{
+                  barcodeTypes: [
+                    "ean13",
+                    "ean8",
+                    "upc_a",
+                    "upc_e",
+                    "code128",
+                    "code39",
+                    "qr",
+                  ],
+                }}
+                onBarcodeScanned={onBarcodeScanned}
+              />
+            </View>
+
+            {isBarcodeLookupLoading ? (
+              <View style={styles.scannerStatusRow}>
+                <ActivityIndicator size="small" />
+                <Text style={styles.scannerStatusText}>Looking up product...</Text>
+              </View>
+            ) : null}
+
+            {hasScanned && !isBarcodeLookupLoading ? (
+              <Pressable
+                onPress={() => {
+                  setHasScanned(false);
+                }}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>Scan again</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1257,7 +1387,9 @@ function SectionCard({
   );
 }
 
-function getInsightIcon(tone: InsightTone): "sparkles" | "warning" | "information-circle" {
+function getInsightIcon(
+  tone: InsightTone,
+): "sparkles" | "warning" | "information-circle" {
   if (tone === "positive") {
     return "sparkles";
   }
@@ -1462,6 +1594,25 @@ const styles = {
   stackGapLarge: { gap: 12 },
   emptyText: { color: "#64748b" },
   subtleMessage: { marginTop: 8, color: "#64748b" },
+  scanButton: {
+    marginTop: -2,
+    marginBottom: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    backgroundColor: "#f8fafc",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 6,
+  },
+  scanButtonText: {
+    color: "#0f172a",
+    fontWeight: "700" as const,
+    fontSize: 13,
+  },
   insightsWrap: {
     gap: 8,
     marginBottom: 10,
@@ -1623,6 +1774,36 @@ const styles = {
     backgroundColor: "#e2e8f0",
   },
   modalActionsRow: { flexDirection: "row" as const, gap: 10, marginTop: 4 },
+  scannerCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    padding: 16,
+  },
+  scannerHint: {
+    color: "#475569",
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  scannerViewWrap: {
+    borderRadius: 18,
+    overflow: "hidden" as const,
+    height: 300,
+    backgroundColor: "#0f172a",
+  },
+  scannerView: {
+    flex: 1,
+  },
+  scannerStatusRow: {
+    marginTop: 10,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+  },
+  scannerStatusText: {
+    color: "#334155",
+    fontSize: 12,
+  },
   statPill: {
     backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 18,
