@@ -10,7 +10,11 @@ import {
 } from "@/types/nutrition";
 import { buildSmartInsights } from "@/utils/nutritionInsights";
 import { Ionicons } from "@expo/vector-icons";
-import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
+import {
+  BarcodeScanningResult,
+  CameraView,
+  useCameraPermissions,
+} from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
@@ -354,14 +358,20 @@ export default function NutritionScreen() {
 
   async function onOpenScanner() {
     if (Platform.OS === "web") {
-      Alert.alert("Scanner unavailable", "Barcode scanner works on iOS/Android devices.");
+      Alert.alert(
+        "Scanner unavailable",
+        "Barcode scanner works on iOS/Android devices.",
+      );
       return;
     }
 
     if (!cameraPermission?.granted) {
       const permission = await requestCameraPermission();
       if (!permission.granted) {
-        Alert.alert("Camera permission needed", "Allow camera access to scan product barcodes.");
+        Alert.alert(
+          "Camera permission needed",
+          "Allow camera access to scan product barcodes.",
+        );
         return;
       }
     }
@@ -405,7 +415,10 @@ export default function NutritionScreen() {
       closeScanner();
       openProduct(product);
     } catch (error: any) {
-      Alert.alert("Scan failed", error?.message ?? "Could not read this barcode.");
+      Alert.alert(
+        "Scan failed",
+        error?.message ?? "Could not read this barcode.",
+      );
       setHasScanned(false);
     } finally {
       setIsBarcodeLookupLoading(false);
@@ -1323,7 +1336,8 @@ export default function NutritionScreen() {
             </View>
 
             <Text style={styles.scannerHint}>
-              Place the barcode inside the frame. We will find the product and open it for logging.
+              Place the barcode inside the frame. We will find the product and
+              open it for logging.
             </Text>
 
             <View style={styles.scannerViewWrap}>
@@ -1348,7 +1362,9 @@ export default function NutritionScreen() {
             {isBarcodeLookupLoading ? (
               <View style={styles.scannerStatusRow}>
                 <ActivityIndicator size="small" />
-                <Text style={styles.scannerStatusText}>Looking up product...</Text>
+                <Text style={styles.scannerStatusText}>
+                  Looking up product...
+                </Text>
               </View>
             ) : null}
 

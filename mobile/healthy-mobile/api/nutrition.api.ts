@@ -33,7 +33,9 @@ function mapProduct(product: OpenFoodFactProduct): ExternalProduct | null {
   const fats = Number(product.nutriments?.fat_100g ?? 0);
   const name = product.product_name?.trim() || product.product_name_en?.trim();
   const imageUrl =
-    product.image_front_url ?? product.image_front_small_url ?? product.image_url;
+    product.image_front_url ??
+    product.image_front_small_url ??
+    product.image_url;
 
   if (!product.code || !name || calories <= 0) {
     return null;
