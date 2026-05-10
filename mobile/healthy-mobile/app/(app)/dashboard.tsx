@@ -2,6 +2,7 @@ import { getProfile } from "@/api/profile.api";
 import { getStepsHistory } from "@/api/steps.api";
 import { getWeightHistory } from "@/api/weight.api";
 import { useNutrition } from "@/hooks/useNutrition";
+import { useSync } from "@/hooks/useSync";
 import { getWeekRange } from "@/utils/week";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -28,6 +29,7 @@ const value = {
 export default function Dashboard() {
   const router = useRouter();
   const { goals, todaysTotals, refresh } = useNutrition();
+  useSync();
   const [weights, setWeights] = useState<any[]>([]);
   const [heightCm, setHeightCm] = useState<number | null>(null);
   const [todaySteps, setTodaySteps] = useState(0);

@@ -7,7 +7,10 @@ import {
 } from "@/types/nutrition";
 import * as SecureStore from "expo-secure-store";
 
-const KEY = "nutrition_store_v1";
+const PRODUCTS_KEY = "nutrition_products_v1";
+const MEALS_KEY = "nutrition_meals_v1";
+const ENTRIES_KEY = "nutrition_entries_v1";
+const GOALS_KEY = "nutrition_goals_v1";
 
 const DEFAULT_GOALS: NutritionGoals = {
   stepsGoal: 8000,
@@ -21,32 +24,72 @@ const DEFAULT_STORE: NutritionStore = {
   goals: DEFAULT_GOALS,
 };
 
-async function readStore(): Promise<NutritionStore> {
-  const raw = await SecureStore.getItemAsync(KEY);
+function toNumberOrZero(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
 
-  if (!raw) {
-    return DEFAULT_STORE;
+function normalizeProduct(product: any): Product | null {
+  if (!product || typeof product !== "object" || typeof product.id !== "string") {
+    return null;
   }
 
-  try {
-    const parsed = JSON.parse(raw) as Partial<NutritionStore>;
+  const per100g = product.per100g && typeof product.per100g === "object"
+    ? {
+        calories: toNumberOrZero(product.per100g.calories),
+        protein: toNumberOrZero(product.per100g.protein),
+        carbs: toNumberOrZero(product.per100g.carbs),
+        fats: toNumberOrZero(product.per100g.fats),
+      }
+    : {
+        // Backward compatibility for older flat product shape
+        calories: toNumberOrZero(product.caloriesPer100g),
+        protein: toNumberOrZero(product.proteinPer100g),
+        carbs: toNumberOrZero(product.carbsPer100g),
+        fats: toNumberOrZero(product.fatsPer100g),
+      };
 
-    return {
-      products: Array.isArray(parsed.products) ? parsed.products : [],
-      meals: Array.isArray(parsed.meals) ? parsed.meals : [],
-      entries: Array.isArray(parsed.entries) ? parsed.entries : [],
-      goals: {
-        stepsGoal: parsed.goals?.stepsGoal ?? DEFAULT_GOALS.stepsGoal,
-        calorieGoal: parsed.goals?.calorieGoal ?? DEFAULT_GOALS.calorieGoal,
-      },
-    };
+  return {
+    id: product.id,
+    name: typeof product.name === "string" ? product.name : "Unnamed product",
+    source: product.source === "api" ? "api" : "custom",
+    imageUrl: typeof product.imageUrl === "string" ? product.imageUrl : undefined,
+    per100g,
+  };
+}
+
+async function readStore(): Promise<NutritionStore> {
+  try {
+    const [productsRaw, mealsRaw, entriesRaw, goalsRaw] = await Promise.all([
+      SecureStore.getItemAsync(PRODUCTS_KEY),
+      SecureStore.getItemAsync(MEALS_KEY),
+      SecureStore.getItemAsync(ENTRIES_KEY),
+      SecureStore.getItemAsync(GOALS_KEY),
+    ]);
+
+    const products = productsRaw
+      ? (JSON.parse(productsRaw) as any[])
+          .map(normalizeProduct)
+          .filter((product: Product | null): product is Product => product !== null)
+      : [];
+    const meals = mealsRaw ? JSON.parse(mealsRaw) : [];
+    const entries = entriesRaw ? JSON.parse(entriesRaw) : [];
+    const goals = goalsRaw
+      ? JSON.parse(goalsRaw)
+      : DEFAULT_GOALS;
+
+    return { products, meals, entries, goals };
   } catch {
     return DEFAULT_STORE;
   }
 }
 
 async function writeStore(store: NutritionStore) {
-  await SecureStore.setItemAsync(KEY, JSON.stringify(store));
+  await Promise.all([
+    SecureStore.setItemAsync(PRODUCTS_KEY, JSON.stringify(store.products)),
+    SecureStore.setItemAsync(MEALS_KEY, JSON.stringify(store.meals)),
+    SecureStore.setItemAsync(ENTRIES_KEY, JSON.stringify(store.entries)),
+    SecureStore.setItemAsync(GOALS_KEY, JSON.stringify(store.goals)),
+  ]);
 }
 
 export async function getNutritionStore() {
@@ -119,7 +162,8 @@ export async function deleteMeal(mealId: string) {
 
 export async function saveEntry(entry: NutritionEntry) {
   const store = await readStore();
-  const next = { ...store, entries: [entry, ...store.entries] };
+  const withoutExisting = store.entries.filter((e) => e.id !== entry.id);
+  const next = { ...store, entries: [entry, ...withoutExisting] };
   await writeStore(next);
   return next.entries;
 }

@@ -1,4 +1,5 @@
 import { searchProducts } from "@/api/nutrition.api";
+import * as NutritionBackendApi from "@/api/nutrition-backend.api";
 import {
   deleteEntry,
   deleteMeal,
@@ -79,6 +80,21 @@ export function useNutrition() {
       setMeals(store.meals);
       setEntries(store.entries);
       setGoals(store.goals);
+
+      // Try to sync goals from backend
+      try {
+        const backendGoals = await NutritionBackendApi.getGoals();
+        if (backendGoals) {
+          const updatedGoals: NutritionGoals = {
+            stepsGoal: backendGoals.stepsGoal,
+            calorieGoal: backendGoals.calorieGoal,
+          };
+          setGoals(updatedGoals);
+          await saveGoals(updatedGoals);
+        }
+      } catch (error) {
+        console.log("Failed to sync goals from backend (non-critical):", error);
+      }
     } finally {
       setLoading(false);
     }
@@ -167,9 +183,9 @@ export function useNutrition() {
         id: createId("entry"),
         date,
         type: "meal",
-        mealId,
-        servings,
-        mealType,
+        mealId: mealId,
+        servings: servings,
+        mealType: mealType,
       };
 
       const saved = await saveEntry(entry);
@@ -182,6 +198,16 @@ export function useNutrition() {
   const updateGoals = useCallback(async (nextGoals: NutritionGoals) => {
     const saved = await saveGoals(nextGoals);
     setGoals(saved);
+
+    try {
+      await NutritionBackendApi.updateGoals({
+        calorieGoal: nextGoals.calorieGoal,
+        stepsGoal: nextGoals.stepsGoal,
+      });
+    } catch (error) {
+      console.log("Failed to sync goals to backend (non-critical):", error);
+    }
+
     return saved;
   }, []);
 

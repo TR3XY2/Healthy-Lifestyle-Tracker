@@ -32,6 +32,7 @@ public static class Program
         builder.Services.AddScoped<IStepsService, StepsService>();
         builder.Services.AddScoped<IWeightService, WeightService>();
         builder.Services.AddScoped<IProfileService, ProfileService>();
+        builder.Services.AddScoped<INutritionService, NutritionService>();
 
         // Identity
         builder.Services.AddIdentity<User, IdentityRole>()

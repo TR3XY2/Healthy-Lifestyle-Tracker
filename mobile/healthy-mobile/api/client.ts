@@ -1,9 +1,46 @@
+import { saveTokens } from "@/storage/token.storage";
+
 const API_URL = "http://192.168.0.19:5104/api";
 
 let authToken: string | null = null;
+let refreshToken: string | null = null;
 
 export function setToken(token: string | null) {
   authToken = token;
+}
+
+export function setRefreshToken(token: string | null) {
+  refreshToken = token;
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  try {
+    if (!refreshToken) {
+      return false;
+    }
+
+    const res = await fetch(API_URL + "/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(refreshToken),
+    });
+
+    if (!res.ok) {
+      return false;
+    }
+
+    const data = await res.json();
+    authToken = data.accessToken;
+    refreshToken = data.refreshToken;
+
+    // Save new tokens
+    await saveTokens(data.accessToken, data.refreshToken, data.expiresIn);
+
+    return true;
+  } catch (error) {
+    console.error("Token refresh failed:", error);
+    return false;
+  }
 }
 
 async function request(url: string, options: RequestInit = {}) {
@@ -17,12 +54,33 @@ async function request(url: string, options: RequestInit = {}) {
     headers.Authorization = `Bearer ${authToken}`;
   }
 
-  const res = await fetch(API_URL + url, {
+  let res = await fetch(API_URL + url, {
     ...options,
     headers,
   });
 
   console.log("RESPONSE STATUS:", res.status);
+
+  // Handle 401 Unauthorized - try to refresh
+  if (res.status === 401) {
+    console.log("Token expired, attempting refresh...");
+
+    const refreshSuccessful = await refreshAccessToken();
+
+    if (refreshSuccessful && authToken) {
+      // Retry with new token
+      headers.Authorization = `Bearer ${authToken}`;
+      res = await fetch(API_URL + url, {
+        ...options,
+        headers,
+      });
+
+      console.log("RETRY RESPONSE STATUS:", res.status);
+    } else {
+      // Refresh failed - will be handled by AuthContext
+      throw { status: 401, message: "Session expired. Please login again." };
+    }
+  }
 
   if (!res.ok) {
     const text = await res.text();
