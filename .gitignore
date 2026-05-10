@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 /backend/HealthyApi/HealthyApi/appsettings.json
 /backend/HealthyApi/HealthyApi/appsettings.json
+/.idea
