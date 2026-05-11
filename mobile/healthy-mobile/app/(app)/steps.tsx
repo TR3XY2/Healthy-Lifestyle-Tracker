@@ -1,4 +1,5 @@
 import { deleteSteps, getStepsHistory, saveSteps } from "@/api/steps.api";
+import { useI18n } from "@/context/I18nContext";
 import { formatWeekRange, getWeekRange, normalizeWeekData } from "@/utils/week";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -18,6 +19,7 @@ type ChartMode = "steps" | "calories" | "distance";
 const METERS_PER_STEP = 0.7;
 
 export default function Steps() {
+  const { t } = useI18n();
   const [mode, setMode] = useState<ChartMode>("steps");
   const [weekOffset, setWeekOffset] = useState(0);
   const [data, setData] = useState<any[]>([]);
@@ -58,17 +60,17 @@ export default function Steps() {
   const summary =
     mode === "steps"
       ? {
-          total: `${totalSteps.toLocaleString()} steps`,
-          avg: `${avgSteps.toLocaleString()} avg / day`,
+          total: `${totalSteps.toLocaleString()} ${t("steps.steps")}`,
+          avg: `${avgSteps.toLocaleString()} ${t("steps.avgPerDay")}`,
         }
       : mode === "calories"
         ? {
-            total: `${totalCalories.toLocaleString()} kcal`,
-            avg: `${avgCalories.toLocaleString()} avg / day`,
+            total: `${totalCalories.toLocaleString()} ${t("dashboard.kcal")}`,
+            avg: `${avgCalories.toLocaleString()} ${t("steps.avgPerDay")}`,
           }
         : {
-            total: `${totalDistance.toFixed(2)} km`,
-            avg: `${avgDistance.toFixed(2)} avg km / day`,
+            total: `${totalDistance.toFixed(2)} ${t("steps.km")}`,
+            avg: `${avgDistance.toFixed(2)} ${t("steps.avgKmPerDay")}`,
           };
 
   const formatValue = (value: number) => {
@@ -77,10 +79,10 @@ export default function Steps() {
     }
 
     if (mode === "distance") {
-      return `${value} km`;
+      return `${value} ${t("steps.km")}`;
     }
 
-    return `${value} kcal`;
+    return `${value} ${t("dashboard.kcal")}`;
   };
 
   const selectedDay =
@@ -127,12 +129,15 @@ export default function Steps() {
           setStepInput(String(normalized[safeIndex]?.steps ?? 0));
         }
       } catch (e: any) {
-        Alert.alert("Loading steps failed.", e?.message ?? "Unknown error");
+        Alert.alert(
+          t("steps.loadingFailed"),
+          e?.message ?? t("common.unknownError"),
+        );
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   const onSelectBar = (index: number) => {
@@ -148,10 +153,7 @@ export default function Steps() {
     const parsed = Number(stepInput.trim());
 
     if (!Number.isInteger(parsed) || parsed < 0 || parsed > 200000) {
-      Alert.alert(
-        "Invalid steps",
-        "Enter a whole number between 0 and 200000.",
-      );
+      Alert.alert(t("steps.invalidSteps"), t("steps.enterValidSteps"));
       return;
     }
 
@@ -164,9 +166,9 @@ export default function Steps() {
       });
 
       await loadWeek(weekOffset, true, selectedIndex);
-      Alert.alert("Saved", "Steps updated for selected day.");
+      Alert.alert(t("common.success"), t("steps.stepsUpdated"));
     } catch (e: any) {
-      Alert.alert("Save failed", e?.message ?? "Unknown error");
+      Alert.alert(t("common.error"), e?.message ?? t("common.unknownError"));
     } finally {
       setSaving(false);
     }
@@ -174,36 +176,46 @@ export default function Steps() {
 
   const onDeleteSelected = () => {
     if (!selectedDay || !selectedDay.hasRecord) {
-      Alert.alert("Nothing to delete", "No steps record exists for this day.");
+      Alert.alert(t("steps.nothingToDelete"), t("steps.noStepsRecord"));
       return;
     }
 
-    Alert.alert("Delete entry", `Delete steps for ${selectedDateLabel}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          setSaving(true);
+    Alert.alert(
+      t("steps.deleteEntry"),
+      `${t("steps.deleteStepsConfirm")} ${selectedDateLabel}?`,
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: async () => {
+            setSaving(true);
 
-          try {
-            await deleteSteps(selectedDay.date);
-            await loadWeek(weekOffset, true, selectedIndex);
-            Alert.alert("Deleted", "Steps entry removed.");
-          } catch (e: any) {
-            if (e?.status === 404) {
+            try {
+              await deleteSteps(selectedDay.date);
               await loadWeek(weekOffset, true, selectedIndex);
-              Alert.alert("Deleted", "Steps entry was already removed.");
-              return;
-            }
+              Alert.alert(t("common.success"), t("steps.entryRemoved"));
+            } catch (e: any) {
+              if (e?.status === 404) {
+                await loadWeek(weekOffset, true, selectedIndex);
+                Alert.alert(
+                  t("common.success"),
+                  t("steps.entryAlreadyRemoved"),
+                );
+                return;
+              }
 
-            Alert.alert("Delete failed", e?.message ?? "Unknown error");
-          } finally {
-            setSaving(false);
-          }
+              Alert.alert(
+                t("steps.deleteFailed"),
+                e?.message ?? t("common.unknownError"),
+              );
+            } finally {
+              setSaving(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   useEffect(() => {
@@ -225,7 +237,6 @@ export default function Steps() {
           <Text style={{ fontSize: 30, fontWeight: "800", color: "#111" }}>
             {summary.total}
           </Text>
-
           <Text style={{ fontSize: 16, fontWeight: "600", color: "#333" }}>
             {summary.avg}
           </Text>
@@ -241,9 +252,8 @@ export default function Steps() {
               borderRadius: 8,
             }}
           >
-            <Text>⬅ Previous</Text>
+            <Text>⬅ {t("steps.previous")}</Text>
           </TouchableOpacity>
-
           <Text style={{ fontWeight: "600" }}>{formatWeekRange(from, to)}</Text>
 
           <TouchableOpacity
@@ -255,7 +265,7 @@ export default function Steps() {
               borderRadius: 8,
             }}
           >
-            <Text>Next ➡</Text>
+            <Text>{t("steps.next")} ➡</Text>
           </TouchableOpacity>
         </View>
 
@@ -306,7 +316,7 @@ export default function Steps() {
               borderRadius: 6,
             }}
           >
-            <Text>Steps</Text>
+            <Text>{t("steps.steps")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -317,7 +327,7 @@ export default function Steps() {
               borderRadius: 6,
             }}
           >
-            <Text>Calories</Text>
+            <Text>{t("dashboard.calories")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -329,7 +339,7 @@ export default function Steps() {
               borderRadius: 6,
             }}
           >
-            <Text>Distance</Text>
+            <Text>{t("dashboard.distance")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -344,20 +354,20 @@ export default function Steps() {
           }}
         >
           <Text style={{ fontSize: 17, fontWeight: "700", marginBottom: 4 }}>
-            {selectedDay ? `Selected: ${selectedDateLabel}` : "Select a day"}
+            {selectedDay
+              ? `${t("steps.selected")}: ${selectedDateLabel}`
+              : t("steps.selectDay")}
           </Text>
-
           <Text style={{ color: "#64748b", marginBottom: 10 }}>
-            Tap a bar to set, change, or delete steps for that day.
+            {t("steps.tapToSetSteps")}
           </Text>
-
           <TextInput
             value={stepInput}
             onChangeText={setStepInput}
             keyboardType="number-pad"
             returnKeyType="done"
             editable={!!selectedDay && !saving}
-            placeholder="Steps for selected day"
+            placeholder={t("steps.stepsForDay")}
             style={{
               borderWidth: 1,
               borderColor: "#cbd5e1",
@@ -390,7 +400,7 @@ export default function Steps() {
                   fontWeight: "700",
                 }}
               >
-                {saving ? "Working..." : "Save"}
+                {saving ? t("common.working") : t("common.save")}
               </Text>
             </TouchableOpacity>
 
@@ -411,7 +421,7 @@ export default function Steps() {
                   fontWeight: "700",
                 }}
               >
-                Delete
+                {t("common.delete")}
               </Text>
             </TouchableOpacity>
           </View>

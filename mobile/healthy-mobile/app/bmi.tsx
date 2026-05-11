@@ -1,5 +1,6 @@
 import { getProfile } from "@/api/profile.api";
 import { useWeight } from "@/hooks/useWeight";
+import { useI18n } from "@/context/I18nContext";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -28,24 +29,25 @@ function calculateBMI(weightKg: number, heightCm: number) {
   return Number((weightKg / (heightM * heightM)).toFixed(1));
 }
 
-function getBmiLabel(bmi: number) {
+function getBmiLabel(bmi: number, t: (key: string) => string) {
   if (bmi < 18.5) {
-    return "Underweight";
+    return t("profile.underweight");
   }
 
   if (bmi < 25) {
-    return "Healthy";
+    return t("profile.normalWeight");
   }
 
   if (bmi < 30) {
-    return "Overweight";
+    return t("profile.overweight");
   }
 
-  return "Obesity";
+  return t("profile.obese");
 }
 
 export default function Bmi() {
   const router = useRouter();
+  const { t } = useI18n();
   const scrollViewRef = useRef<ScrollView>(null);
   const { weights, loading: weightLoading } = useWeight();
 
@@ -148,7 +150,9 @@ export default function Bmi() {
             borderRadius: 8,
           }}
         >
-          <Text style={{ color: "white", fontWeight: "700" }}>Go Back</Text>
+          <Text style={{ color: "white", fontWeight: "700" }}>
+            {t("profile.goBack")}
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -172,7 +176,7 @@ export default function Bmi() {
             textAlign: "center",
           }}
         >
-          Add your height in the profile to calculate BMI.
+          {t("profile.addHeightToBmi")}
         </Text>
         <TouchableOpacity
           onPress={() => router.push("/profile")}
@@ -184,7 +188,7 @@ export default function Bmi() {
           }}
         >
           <Text style={{ color: "white", fontWeight: "700" }}>
-            Go to Profile
+            {t("profile.goToProfile")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -209,7 +213,7 @@ export default function Bmi() {
             textAlign: "center",
           }}
         >
-          No weight records yet, so BMI history is unavailable.
+          {t("profile.noWeightRecords")}
         </Text>
         <TouchableOpacity
           onPress={() => router.push("/weight")}
@@ -221,7 +225,7 @@ export default function Bmi() {
           }}
         >
           <Text style={{ color: "white", fontWeight: "700" }}>
-            Go to Weight
+            {t("profile.goToWeight")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -229,7 +233,7 @@ export default function Bmi() {
   }
 
   const selectedBmi = selectedPoint?.value ?? 0;
-  const bmiLabel = getBmiLabel(selectedBmi);
+  const bmiLabel = getBmiLabel(selectedBmi, t);
 
   return (
     <View style={{ flex: 1 }}>
@@ -246,7 +250,7 @@ export default function Bmi() {
           <Text style={{ fontSize: 25 }}>{"<"}</Text>
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "700", marginLeft: 16 }}>
-          BMI History
+          {t("profile.bmiHistory")}
         </Text>
       </View>
 
@@ -259,10 +263,10 @@ export default function Bmi() {
         }}
       >
         <Text style={{ fontSize: 28, fontWeight: "700" }}>
-          {selectedBmi.toFixed(1)} BMI
+          {selectedBmi.toFixed(1)} {t("profile.bmi")}
         </Text>
         <Text style={{ fontSize: 14, color: "#64748b", marginTop: 4 }}>
-          {bmiLabel} · Height {heightCm} cm
+          {bmiLabel} · {t("profile.height")}: {heightCm} {t("weight.cm")}
         </Text>
       </View>
 
@@ -407,19 +411,23 @@ export default function Bmi() {
         }}
       >
         <Text style={{ fontSize: 15, fontWeight: "700", marginBottom: 10 }}>
-          BMI Details
+          {t("profile.bmiDetails")}
         </Text>
 
         <Text style={{ color: "#334155", marginBottom: 6 }}>
           {selectedPoint?.date ?? ""}
         </Text>
         <Text style={{ color: "#334155", marginBottom: 6 }}>
-          Weight: {selectedPoint ? selectedPoint.weight.toFixed(2) : "0.00"} kg
+          {t("profile.weight")}:{" "}
+          {selectedPoint ? selectedPoint.weight.toFixed(2) : "0.00"}{" "}
+          {t("weight.kg")}
         </Text>
         <Text style={{ color: "#334155", marginBottom: 6 }}>
-          Height: {heightCm} cm
+          {t("profile.height")}: {heightCm} {t("weight.cm")}
         </Text>
-        <Text style={{ color: "#334155" }}>BMI category: {bmiLabel}</Text>
+        <Text style={{ color: "#334155" }}>
+          {t("profile.bmiCategory")}: {bmiLabel}
+        </Text>
       </View>
     </View>
   );

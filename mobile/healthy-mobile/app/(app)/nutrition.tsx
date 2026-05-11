@@ -1,4 +1,5 @@
-import { useNutrition } from "@/hooks/useNutrition";
+﻿import { useNutrition } from "@/hooks/useNutrition";
+import { useI18n } from "@/context/I18nContext";
 import { getProductByBarcode } from "@/api/nutrition.api";
 import {
   ExternalProduct,
@@ -52,12 +53,12 @@ type DateGroup = {
 
 type ProductLike = Product | ExternalProduct;
 
-const MEAL_TYPE_OPTIONS: { value: MealType; label: string }[] = [
-  { value: "breakfast", label: "Breakfast" },
-  { value: "lunch", label: "Lunch" },
-  { value: "dinner", label: "Dinner" },
-  { value: "snack", label: "Snack" },
-  { value: "other", label: "Other" },
+const MEAL_TYPE_OPTIONS_STATIC: { value: MealType; labelKey: string }[] = [
+  { value: "breakfast", labelKey: "nutrition.breakfast" },
+  { value: "lunch", labelKey: "nutrition.lunch" },
+  { value: "dinner", labelKey: "nutrition.dinner" },
+  { value: "snack", labelKey: "nutrition.snack" },
+  { value: "other", labelKey: "nutrition.other" },
 ];
 
 const EMPTY_MACRO: MacroValues = {
@@ -96,15 +97,15 @@ function formatDateLabel(date: string) {
   }).format(parsed);
 }
 
-function formatMealType(mealType?: MealType) {
-  if (!mealType) {
-    return "Other";
+function formatMealType(mealType?: MealType, t?: any) {
+  if (!mealType || !t) {
+    return t ? t("nutrition.other") : "Other";
   }
 
-  return (
-    MEAL_TYPE_OPTIONS.find((option) => option.value === mealType)?.label ??
-    "Other"
+  const option = MEAL_TYPE_OPTIONS_STATIC.find(
+    (option) => option.value === mealType,
   );
+  return option ? t(option.labelKey) : t("nutrition.other");
 }
 
 function scaleMacro(per100g: MacroValues, grams: number): MacroValues {
@@ -140,6 +141,7 @@ function isValidDateOnly(value: string) {
 }
 
 export default function NutritionScreen() {
+  const { t } = useI18n();
   const {
     loading,
     products,
@@ -231,7 +233,7 @@ export default function NutritionScreen() {
 
   const entrySummaries = useMemo<EntrySummary[]>(() => {
     return entries.map((entry) => {
-      const mealTypeLabel = formatMealType(entry.mealType);
+      const mealTypeLabel = formatMealType(entry.mealType, t);
 
       if (entry.type === "product") {
         const product = entry.productId
@@ -242,13 +244,13 @@ export default function NutritionScreen() {
         return {
           id: entry.id,
           date: entry.date,
-          title: product?.name ?? "Deleted product",
+          title: product?.name ?? t("nutrition.deletedProduct"),
           detail: `${amount}g`,
           macros: product ? scaleMacro(product.per100g, amount) : EMPTY_MACRO,
           mealType: entry.mealType,
           mealTypeLabel,
           imageUrl: product?.imageUrl,
-          sourceLabel: "Product",
+          sourceLabel: t("nutrition.product"),
           type: entry.type,
         };
       }
@@ -262,8 +264,8 @@ export default function NutritionScreen() {
       return {
         id: entry.id,
         date: entry.date,
-        title: meal?.name ?? "Deleted meal",
-        detail: `${servings} serving${servings === 1 ? "" : "s"}`,
+        title: meal?.name ?? t("nutrition.deletedMeal"),
+        detail: `${servings} ${t(servings === 1 ? "nutrition.serving" : "nutrition.servings")}`,
         macros: {
           calories: Number((mealMacro.calories * servings).toFixed(1)),
           protein: Number((mealMacro.protein * servings).toFixed(1)),
@@ -272,11 +274,11 @@ export default function NutritionScreen() {
         },
         mealType: entry.mealType,
         mealTypeLabel,
-        sourceLabel: "Meal",
+        sourceLabel: t("nutrition.meal"),
         type: entry.type,
       };
     });
-  }, [entries, mealMacroMap, mealMap, productMap]);
+  }, [entries, mealMacroMap, mealMap, productMap, t]);
 
   const historyGroups = useMemo<DateGroup[]>(() => {
     const grouped = new Map<string, EntrySummary[]>();
@@ -346,11 +348,11 @@ export default function NutritionScreen() {
       const nextResults = found.slice(0, 5);
       setSearchResults(nextResults);
       setSearchMessage(
-        nextResults.length === 0 ? "Nothing found. Try another name." : null,
+        nextResults.length === 0 ? t("nutrition.nothingFound") : null,
       );
     } catch (error: any) {
       setSearchResults([]);
-      setSearchMessage(error?.message ?? "Search failed. Please try again.");
+      setSearchMessage(error?.message ?? t("nutrition.searchFailed"));
     } finally {
       setSearchLoading(false);
     }
@@ -359,8 +361,8 @@ export default function NutritionScreen() {
   async function onOpenScanner() {
     if (Platform.OS === "web") {
       Alert.alert(
-        "Scanner unavailable",
-        "Barcode scanner works on iOS/Android devices.",
+        t("nutrition.scannerUnavailable"),
+        t("nutrition.scannerWebOnly"),
       );
       return;
     }
@@ -369,8 +371,8 @@ export default function NutritionScreen() {
       const permission = await requestCameraPermission();
       if (!permission.granted) {
         Alert.alert(
-          "Camera permission needed",
-          "Allow camera access to scan product barcodes.",
+          t("nutrition.cameraPermissionNeeded"),
+          t("nutrition.allowCameraForScanning"),
         );
         return;
       }
@@ -404,7 +406,10 @@ export default function NutritionScreen() {
       const product = await getProductByBarcode(code);
 
       if (!product) {
-        Alert.alert("Not found", "No product found for this barcode.");
+        Alert.alert(
+          t("nutrition.notFound"),
+          t("nutrition.noProductForBarcode"),
+        );
         setHasScanned(false);
         return;
       }
@@ -416,8 +421,8 @@ export default function NutritionScreen() {
       openProduct(product);
     } catch (error: any) {
       Alert.alert(
-        "Scan failed",
-        error?.message ?? "Could not read this barcode.",
+        t("nutrition.scanFailed"),
+        error?.message ?? t("nutrition.couldNotReadBarcode"),
       );
       setHasScanned(false);
     } finally {
@@ -449,9 +454,12 @@ export default function NutritionScreen() {
     try {
       const saved = await importExternalProduct(activeProduct);
       setActiveProduct(saved);
-      Alert.alert("Saved", `${saved.name} was added to your library.`);
+      Alert.alert(
+        t("common.success"),
+        `${saved.name} ${t("nutrition.wasAddedToLibrary")}.`,
+      );
     } catch (error: any) {
-      Alert.alert("Save failed", error?.message ?? "Please try again.");
+      Alert.alert(t("common.error"), error?.message ?? t("common.tryAgain"));
     }
   }
 
@@ -462,7 +470,10 @@ export default function NutritionScreen() {
 
     const grams = parsePositiveNumber(activeProductGrams);
     if (grams <= 0) {
-      Alert.alert("Invalid amount", "Enter a grams value above zero.");
+      Alert.alert(
+        t("nutrition.invalidAmount"),
+        t("nutrition.enterGramsAboveZero"),
+      );
       return;
     }
 
@@ -481,10 +492,13 @@ export default function NutritionScreen() {
         selectedDate,
         activeProductMealType,
       );
-      Alert.alert("Added", `Logged for ${formatDateLabel(selectedDate)}.`);
+      Alert.alert(
+        t("common.success"),
+        `${t("nutrition.loggedFor")} ${formatDateLabel(selectedDate)}.`,
+      );
       closeProduct();
     } catch (error: any) {
-      Alert.alert("Log failed", error?.message ?? "Please try again.");
+      Alert.alert(t("common.error"), error?.message ?? t("common.tryAgain"));
     }
   }
 
@@ -495,7 +509,10 @@ export default function NutritionScreen() {
     const fats = Number(productFats || 0);
 
     if (!productName.trim() || calories <= 0) {
-      Alert.alert("Invalid product", "Provide name and calories per 100g.");
+      Alert.alert(
+        t("nutrition.invalidProduct"),
+        t("nutrition.provideNameAndCalories"),
+      );
       return;
     }
 
@@ -506,9 +523,9 @@ export default function NutritionScreen() {
       setProductProtein("");
       setProductCarbs("");
       setProductFats("");
-      Alert.alert("Saved", "Custom product added.");
+      Alert.alert(t("common.success"), t("nutrition.customProductAdded"));
     } catch (error: any) {
-      Alert.alert("Save failed", error?.message ?? "Please try again.");
+      Alert.alert(t("common.error"), error?.message ?? t("common.tryAgain"));
     }
   }
 
@@ -516,7 +533,10 @@ export default function NutritionScreen() {
     const grams = Number(mealGrams);
 
     if (!mealProductId || grams <= 0) {
-      Alert.alert("Invalid item", "Choose a product and grams.");
+      Alert.alert(
+        t("nutrition.invalidItem"),
+        t("nutrition.chooseProductAndGrams"),
+      );
       return;
     }
 
@@ -531,7 +551,10 @@ export default function NutritionScreen() {
 
   async function onCreateMeal() {
     if (!mealName.trim() || mealItems.length === 0) {
-      Alert.alert("Invalid meal", "Provide a meal name and at least one item.");
+      Alert.alert(
+        t("nutrition.invalidMeal"),
+        t("nutrition.provideMealNameAndItems"),
+      );
       return;
     }
 
@@ -539,9 +562,9 @@ export default function NutritionScreen() {
       await addMeal(mealName, mealItems);
       setMealName("");
       setMealItems([]);
-      Alert.alert("Saved", "Meal created successfully.");
+      Alert.alert(t("common.success"), t("nutrition.mealCreatedSuccessfully"));
     } catch (error: any) {
-      Alert.alert("Save failed", error?.message ?? "Please try again.");
+      Alert.alert(t("common.error"), error?.message ?? t("common.tryAgain"));
     }
   }
 
@@ -549,12 +572,15 @@ export default function NutritionScreen() {
     const amount = Number(entryAmount);
 
     if (!isValidDateOnly(selectedDate)) {
-      Alert.alert("Invalid date", "Use YYYY-MM-DD format.");
+      Alert.alert(t("nutrition.invalidDate"), t("nutrition.useYYYYMMDDFormat"));
       return;
     }
 
     if (!entryRefId || amount <= 0) {
-      Alert.alert("Invalid entry", "Choose item and amount.");
+      Alert.alert(
+        t("nutrition.invalidEntry"),
+        t("nutrition.chooseItemAndAmount"),
+      );
       return;
     }
 
@@ -578,22 +604,22 @@ export default function NutritionScreen() {
       setEntryRefId(null);
       setEntryAmount(entryType === "product" ? "100" : "1");
       Alert.alert(
-        "Added",
-        `Nutrition entry saved for ${formatDateLabel(selectedDate)}.`,
+        t("common.success"),
+        `${t("nutrition.nutritionEntrySaved")} ${formatDateLabel(selectedDate)}.`,
       );
     } catch (error: any) {
-      Alert.alert("Save failed", error?.message ?? "Please try again.");
+      Alert.alert(t("common.error"), error?.message ?? t("common.tryAgain"));
     }
   }
 
   function confirmDeleteProduct(product: Product) {
     Alert.alert(
-      "Delete product?",
-      `${product.name} will be removed from your library, meals, and logged entries.`,
+      t("nutrition.deleteProduct"),
+      `${product.name} ${t("nutrition.willBeRemovedFromLibrary")}.`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => {
             void removeProduct(product.id).then(() => {
@@ -609,12 +635,12 @@ export default function NutritionScreen() {
 
   function confirmDeleteMeal(mealId: string, mealNameLabel: string) {
     Alert.alert(
-      "Delete meal?",
-      `${mealNameLabel} will be removed from history.`,
+      t("nutrition.deleteMeal"),
+      `${mealNameLabel} ${t("nutrition.willBeRemovedFromHistory")}`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => {
             void removeMeal(mealId);
@@ -625,10 +651,10 @@ export default function NutritionScreen() {
   }
 
   function confirmDeleteEntry(entryId: string) {
-    Alert.alert("Delete entry?", "This log entry will be removed.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("nutrition.deleteEntry"), t("nutrition.entryWillBeRemoved"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: () => {
           void removeEntry(entryId);
@@ -654,19 +680,21 @@ export default function NutritionScreen() {
         <LinearGradient colors={["#0f172a", "#155e75"]} style={styles.heroCard}>
           <View style={styles.heroHeaderRow}>
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>Nutrition</Text>
+              <Text style={styles.heroBadgeText}>
+                {t("nutrition.nutrition")}
+              </Text>
             </View>
             <View style={styles.heroTodayPill}>
               <Text style={styles.heroTodayPillText}>
-                Today {Math.round(todaysTotals.calories)} kcal
+                {t("nutrition.today")} {Math.round(todaysTotals.calories)}{" "}
+                {t("dashboard.kcal")}
               </Text>
             </View>
           </View>
 
           <Text style={styles.heroTitle}>{formatDateLabel(selectedDate)}</Text>
           <Text style={styles.heroSubtitle}>
-            Use the buttons to move between days, then tap any product to open
-            the amount picker.
+            {t("nutrition.navigationInfo")}
           </Text>
 
           <View style={styles.dateNavRow}>
@@ -675,42 +703,51 @@ export default function NutritionScreen() {
               style={styles.navButton}
             >
               <Ionicons name="chevron-back" size={16} color="#0f172a" />
-              <Text style={styles.navButtonText}>Previous</Text>
+              <Text style={styles.navButtonText}>
+                {t("nutrition.previous")}
+              </Text>
             </Pressable>
             <Pressable onPress={goToToday} style={styles.navButtonPrimary}>
-              <Text style={styles.navButtonPrimaryText}>Today</Text>
+              <Text style={styles.navButtonPrimaryText}>
+                {t("nutrition.today")}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => shiftSelectedDate(1)}
               style={styles.navButton}
             >
-              <Text style={styles.navButtonText}>Next</Text>
+              <Text style={styles.navButtonText}>{t("nutrition.next")}</Text>
               <Ionicons name="chevron-forward" size={16} color="#0f172a" />
             </Pressable>
           </View>
 
           <View style={styles.heroStatsRow}>
             <StatPill
-              label="Calories"
+              label={t("nutrition.calories")}
               value={`${Math.round(selectedDayTotals.calories)} kcal`}
             />
             <StatPill
-              label="Protein"
+              label={t("nutrition.protein")}
               value={`${selectedDayTotals.protein.toFixed(1)} g`}
             />
             <StatPill
-              label="Carbs"
+              label={t("nutrition.carbs")}
               value={`${selectedDayTotals.carbs.toFixed(1)} g`}
             />
             <StatPill
-              label="Fats"
+              label={t("nutrition.fats")}
               value={`${selectedDayTotals.fats.toFixed(1)} g`}
             />
           </View>
 
           <Text style={styles.heroMeta}>
-            {selectedDayEntries.length} item
-            {selectedDayEntries.length === 1 ? "" : "s"} logged for this day.
+            {selectedDayEntries.length}{" "}
+            {t(
+              selectedDayEntries.length === 1
+                ? "nutrition.item"
+                : "nutrition.items",
+            )}{" "}
+            {t("nutrition.loggedForDay")}
           </Text>
         </LinearGradient>
 
@@ -719,8 +756,8 @@ export default function NutritionScreen() {
         ) : (
           <>
             <SectionCard
-              title="Products"
-              subtitle="Search, save, and tap to log from a single compact place."
+              title={t("nutrition.products")}
+              subtitle={t("nutrition.searchInfo")}
             >
               <View style={styles.insightsWrap}>
                 {smartInsights.map((insight) => (
@@ -765,19 +802,23 @@ export default function NutritionScreen() {
               <TextInput
                 value={searchInput}
                 onChangeText={setSearchInput}
-                placeholder="Search food products"
+                placeholder={t("nutrition.searchFoodProducts")}
                 style={styles.input}
               />
               <Pressable onPress={onOpenScanner} style={styles.scanButton}>
                 <Ionicons name="barcode-outline" size={16} color="#0f172a" />
-                <Text style={styles.scanButtonText}>Scan barcode</Text>
+                <Text style={styles.scanButtonText}>
+                  {t("nutrition.scanBarcode")}
+                </Text>
               </Pressable>
               <Pressable
                 onPress={onSearchProducts}
                 style={styles.primaryButton}
               >
                 <Text style={styles.primaryButtonText}>
-                  {searchLoading ? "Searching..." : "Search"}
+                  {searchLoading
+                    ? t("nutrition.searching")
+                    : t("nutrition.search")}
                 </Text>
               </Pressable>
 
@@ -812,10 +853,11 @@ export default function NutritionScreen() {
                     <View style={styles.resultBody}>
                       <Text style={styles.resultTitle}>{result.name}</Text>
                       <Text style={styles.resultMeta}>
-                        {Math.round(result.per100g.calories)} kcal per 100g
+                        {Math.round(result.per100g.calories)}{" "}
+                        {t("dashboard.kcal")} / 100 {t("nutrition.grams")}
                       </Text>
                       <Text style={styles.resultMeta}>
-                        Tap to open amount picker
+                        {t("nutrition.tapToOpenPicker")}
                       </Text>
                     </View>
                     <Ionicons
@@ -827,9 +869,13 @@ export default function NutritionScreen() {
                 ))}
               </View>
 
-              <Text style={styles.sectionLabel}>Recent library</Text>
+              <Text style={styles.sectionLabel}>
+                {t("nutrition.recentLibrary")}
+              </Text>
               {visibleProducts.length === 0 ? (
-                <Text style={styles.emptyText}>No products yet.</Text>
+                <Text style={styles.emptyText}>
+                  {t("nutrition.noProducts")}
+                </Text>
               ) : (
                 <View style={styles.stackGap}>
                   {visibleProducts.map((product) => (
@@ -840,9 +886,9 @@ export default function NutritionScreen() {
                       >
                         <Text style={styles.libraryTitle}>{product.name}</Text>
                         <Text style={styles.libraryMeta}>
-                          {Math.round(product.per100g.calories)} kcal ·{" "}
-                          {product.per100g.protein}P · {product.per100g.carbs}C
-                          · {product.per100g.fats}F
+                          {Math.round(product.per100g.calories)}{" "}
+                          {t("dashboard.kcal")} · {product.per100g.protein}P ·{" "}
+                          {product.per100g.carbs}C · {product.per100g.fats}F
                         </Text>
                       </Pressable>
                       <Pressable
@@ -861,12 +907,12 @@ export default function NutritionScreen() {
               )}
 
               <Text style={[styles.sectionLabel, { marginTop: 12 }]}>
-                Custom product
+                {t("nutrition.customProduct")}
               </Text>
               <TextInput
                 value={productName}
                 onChangeText={setProductName}
-                placeholder="Product name"
+                placeholder={t("nutrition.productName")}
                 style={styles.input}
               />
               <View style={styles.inlineRow}>
@@ -874,14 +920,14 @@ export default function NutritionScreen() {
                   value={productCalories}
                   onChangeText={setProductCalories}
                   keyboardType="decimal-pad"
-                  placeholder="Calories"
+                  placeholder={t("nutrition.calories")}
                   style={[styles.input, styles.flexOne]}
                 />
                 <TextInput
                   value={productProtein}
                   onChangeText={setProductProtein}
                   keyboardType="decimal-pad"
-                  placeholder="Protein"
+                  placeholder={t("nutrition.protein")}
                   style={[styles.input, styles.flexOne]}
                 />
               </View>
@@ -890,14 +936,14 @@ export default function NutritionScreen() {
                   value={productCarbs}
                   onChangeText={setProductCarbs}
                   keyboardType="decimal-pad"
-                  placeholder="Carbs"
+                  placeholder={t("nutrition.carbs")}
                   style={[styles.input, styles.flexOne]}
                 />
                 <TextInput
                   value={productFats}
                   onChangeText={setProductFats}
                   keyboardType="decimal-pad"
-                  placeholder="Fats"
+                  placeholder={t("nutrition.fats")}
                   style={[styles.input, styles.flexOne]}
                 />
               </View>
@@ -906,22 +952,24 @@ export default function NutritionScreen() {
                 style={styles.secondaryButton}
               >
                 <Text style={styles.secondaryButtonText}>
-                  Save custom product
+                  {t("nutrition.saveCustomProduct")}
                 </Text>
               </Pressable>
             </SectionCard>
 
             <SectionCard
-              title="Meals"
-              subtitle="Build meals with a few recent products, then log meals from the short recent list."
+              title={t("nutrition.meals")}
+              subtitle={t("nutrition.recentProductsInfo")}
             >
               <TextInput
                 value={mealName}
                 onChangeText={setMealName}
-                placeholder="Meal name"
+                placeholder={t("nutrition.mealName")}
                 style={styles.input}
               />
-              <Text style={styles.sectionLabel}>Recent products</Text>
+              <Text style={styles.sectionLabel}>
+                {t("nutrition.recentProducts")}
+              </Text>
               <View style={styles.chipWrap}>
                 {visibleProducts.map((product) => (
                   <Pressable
@@ -950,11 +998,13 @@ export default function NutritionScreen() {
                 value={mealGrams}
                 onChangeText={setMealGrams}
                 keyboardType="decimal-pad"
-                placeholder="Grams"
+                placeholder={t("weight.grams")}
                 style={styles.input}
               />
               <Pressable onPress={onAddMealItem} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Add meal item</Text>
+                <Text style={styles.secondaryButtonText}>
+                  {t("nutrition.addMealItem")}
+                </Text>
               </Pressable>
 
               <View style={styles.stackGap}>
@@ -985,14 +1035,16 @@ export default function NutritionScreen() {
               </View>
 
               <Pressable onPress={onCreateMeal} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>Save meal</Text>
+                <Text style={styles.primaryButtonText}>
+                  {t("nutrition.saveMeal")}
+                </Text>
               </Pressable>
 
               <Text style={[styles.sectionLabel, { marginTop: 12 }]}>
-                Recent meals
+                {t("nutrition.recentMeals")}
               </Text>
               {visibleMeals.length === 0 ? (
-                <Text style={styles.emptyText}>No meals yet.</Text>
+                <Text style={styles.emptyText}>{t("nutrition.noMeals")}</Text>
               ) : (
                 <View style={styles.stackGap}>
                   {visibleMeals.map((meal) => (
@@ -1003,8 +1055,12 @@ export default function NutritionScreen() {
                       >
                         <Text style={styles.libraryTitle}>{meal.name}</Text>
                         <Text style={styles.libraryMeta}>
-                          {meal.items.length} item
-                          {meal.items.length === 1 ? "" : "s"}
+                          {meal.items.length}{" "}
+                          {t(
+                            meal.items.length === 1
+                              ? "nutrition.item"
+                              : "nutrition.items",
+                          )}
                         </Text>
                       </Pressable>
                       <Pressable
@@ -1023,7 +1079,7 @@ export default function NutritionScreen() {
               )}
 
               <Text style={[styles.sectionLabel, { marginTop: 12 }]}>
-                Log intake
+                {t("nutrition.logIntake")}
               </Text>
               <View style={styles.inlineRow}>
                 <Pressable
@@ -1042,7 +1098,7 @@ export default function NutritionScreen() {
                         : styles.secondaryButtonText
                     }
                   >
-                    Product
+                    {t("nutrition.product")}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -1061,7 +1117,7 @@ export default function NutritionScreen() {
                         : styles.secondaryButtonText
                     }
                   >
-                    Meal
+                    {t("nutrition.meal")}
                   </Text>
                 </Pressable>
               </View>
@@ -1078,8 +1134,8 @@ export default function NutritionScreen() {
                 }
                 placeholder={
                   entryType === "product"
-                    ? "Tap a recent product"
-                    : "Tap a recent meal"
+                    ? t("nutrition.tapRecentProduct")
+                    : t("nutrition.tapRecentMeal")
                 }
                 style={[styles.input, styles.readOnlyInput]}
               />
@@ -1115,22 +1171,26 @@ export default function NutritionScreen() {
                 value={entryAmount}
                 onChangeText={setEntryAmount}
                 keyboardType="decimal-pad"
-                placeholder={entryType === "product" ? "Grams" : "Servings"}
+                placeholder={
+                  entryType === "product"
+                    ? t("nutrition.grams")
+                    : t("nutrition.servings")
+                }
                 style={styles.input}
               />
               <Pressable onPress={onAddEntry} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>
-                  Add to selected day
+                  {t("nutrition.addToSelectedDay")}
                 </Text>
               </Pressable>
             </SectionCard>
 
             <SectionCard
-              title="History"
-              subtitle="A compact view of the last few days so the page stays readable."
+              title={t("nutrition.history")}
+              subtitle={t("nutrition.recentViewInfo")}
             >
               {historyGroups.length === 0 ? (
-                <Text style={styles.emptyText}>No nutrition history yet.</Text>
+                <Text style={styles.emptyText}>{t("nutrition.noHistory")}</Text>
               ) : (
                 <View style={styles.stackGapLarge}>
                   {historyGroups.map((group) => (
@@ -1141,16 +1201,23 @@ export default function NutritionScreen() {
                             {formatDateLabel(group.date)}
                           </Text>
                           <Text style={styles.groupMeta}>
-                            {group.items.length} item
-                            {group.items.length === 1 ? "" : "s"} ·{" "}
-                            {Math.round(group.totals.calories)} kcal
+                            {group.items.length}{" "}
+                            {t(
+                              group.items.length === 1
+                                ? "nutrition.item"
+                                : "nutrition.items",
+                            )}{" "}
+                            · {Math.round(group.totals.calories)}{" "}
+                            {t("dashboard.kcal")}
                           </Text>
                         </View>
                         <Pressable
                           onPress={() => setSelectedDate(group.date)}
                           style={styles.smallActionButton}
                         >
-                          <Text style={styles.smallActionText}>View</Text>
+                          <Text style={styles.smallActionText}>
+                            {t("nutrition.view")}
+                          </Text>
                         </Pressable>
                       </View>
 
@@ -1186,7 +1253,8 @@ export default function NutritionScreen() {
                                 {item.mealTypeLabel}
                               </Text>
                               <Text style={styles.historyMeta}>
-                                {Math.round(item.macros.calories)} kcal ·{" "}
+                                {Math.round(item.macros.calories)}{" "}
+                                {t("dashboard.kcal")} ·{" "}
                                 {item.macros.protein.toFixed(1)}P ·{" "}
                                 {item.macros.carbs.toFixed(1)}C ·{" "}
                                 {item.macros.fats.toFixed(1)}F
@@ -1255,7 +1323,8 @@ export default function NutritionScreen() {
                 </View>
 
                 <Text style={styles.resultMeta}>
-                  {Math.round(activeProduct.per100g.calories)} kcal per 100g
+                  {Math.round(activeProduct.per100g.calories)}{" "}
+                  {t("dashboard.kcal")} / 100 {t("nutrition.grams")}
                 </Text>
                 <Text style={styles.resultMeta}>
                   P {activeProduct.per100g.protein}g · C{" "}
@@ -1264,7 +1333,7 @@ export default function NutritionScreen() {
                 </Text>
 
                 <View style={styles.chipWrap}>
-                  {MEAL_TYPE_OPTIONS.map((option) => (
+                  {MEAL_TYPE_OPTIONS_STATIC.map((option) => (
                     <Pressable
                       key={option.value}
                       onPress={() => setActiveProductMealType(option.value)}
@@ -1282,7 +1351,7 @@ export default function NutritionScreen() {
                             : styles.chipText
                         }
                       >
-                        {option.label}
+                        {t(option.labelKey)}
                       </Text>
                     </Pressable>
                   ))}
@@ -1292,7 +1361,7 @@ export default function NutritionScreen() {
                   value={activeProductGrams}
                   onChangeText={setActiveProductGrams}
                   keyboardType="decimal-pad"
-                  placeholder="Grams"
+                  placeholder={t("nutrition.grams")}
                   style={styles.input}
                 />
 
@@ -1302,7 +1371,9 @@ export default function NutritionScreen() {
                       onPress={() => void saveActiveProduct()}
                       style={styles.secondaryButton}
                     >
-                      <Text style={styles.secondaryButtonText}>Save</Text>
+                      <Text style={styles.secondaryButtonText}>
+                        {t("common.save")}
+                      </Text>
                     </Pressable>
                   ) : null}
                   <Pressable
@@ -1310,7 +1381,7 @@ export default function NutritionScreen() {
                     style={styles.primaryButton}
                   >
                     <Text style={styles.primaryButtonText}>
-                      Log selected amount
+                      {t("nutrition.logSelected")}
                     </Text>
                   </Pressable>
                 </View>
@@ -1329,15 +1400,16 @@ export default function NutritionScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.scannerCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Scan barcode</Text>
+              <Text style={styles.modalTitle}>
+                {t("nutrition.scanBarcode")}
+              </Text>
               <Pressable onPress={closeScanner} style={styles.iconButtonSoft}>
                 <Ionicons name="close-outline" size={22} color="#0f172a" />
               </Pressable>
             </View>
 
             <Text style={styles.scannerHint}>
-              Place the barcode inside the frame. We will find the product and
-              open it for logging.
+              {t("nutrition.placeMealInfo")}
             </Text>
 
             <View style={styles.scannerViewWrap}>
@@ -1363,7 +1435,7 @@ export default function NutritionScreen() {
               <View style={styles.scannerStatusRow}>
                 <ActivityIndicator size="small" />
                 <Text style={styles.scannerStatusText}>
-                  Looking up product...
+                  {t("nutrition.lookingUpProduct")}
                 </Text>
               </View>
             ) : null}
@@ -1375,7 +1447,9 @@ export default function NutritionScreen() {
                 }}
                 style={styles.secondaryButton}
               >
-                <Text style={styles.secondaryButtonText}>Scan again</Text>
+                <Text style={styles.secondaryButtonText}>
+                  {t("nutrition.scanAgain")}
+                </Text>
               </Pressable>
             ) : null}
           </View>

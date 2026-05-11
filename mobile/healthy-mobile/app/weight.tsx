@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useI18n } from "@/context/I18nContext";
 import Svg, { Polyline, Circle, Line } from "react-native-svg";
 import { useWeight } from "../hooks/useWeight";
 
@@ -21,6 +22,7 @@ const POINT_RADIUS = 5;
 
 export default function Weight() {
   const router = useRouter();
+  const { t } = useI18n();
   const scrollViewRef_inner = useRef<ScrollView>(null);
   const { weights: apiWeights, loading, error, add, remove } = useWeight();
 
@@ -85,13 +87,13 @@ export default function Weight() {
 
   const handleAddWeight = async () => {
     if (!newWeight || !newDate) {
-      Alert.alert("Error", "Please enter both weight and date");
+      Alert.alert(t("weight.error"), t("weight.missingData"));
       return;
     }
 
     const weightValue = parseFloat(newWeight);
     if (isNaN(weightValue) || weightValue <= 0) {
-      Alert.alert("Error", "Please enter a valid weight");
+      Alert.alert(t("weight.error"), t("weight.invalidWeight"));
       return;
     }
 
@@ -101,9 +103,9 @@ export default function Weight() {
       setShowAddModal(false);
       setNewWeight("");
       setNewDate("");
-      Alert.alert("Success", "Weight added successfully");
+      Alert.alert(t("weight.success"), t("weight.weightAddedSuccess"));
     } catch {
-      Alert.alert("Error", "Failed to add weight");
+      Alert.alert(t("weight.error"), t("weight.failedToAddWeight"));
     } finally {
       setSubmitting(false);
     }
@@ -117,23 +119,26 @@ export default function Weight() {
     const validIndex = Math.min(selectedIndex, weights.length - 1);
     const selectedWeight = weights[validIndex];
     Alert.alert(
-      "Delete Weight",
-      `Are you sure you want to delete the weight record from ${selectedWeight.date}?`,
+      t("weight.deleteWeight"),
+      `${t("common.confirm")} ${t("weight.confirmDelete")} ${selectedWeight.date}?`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("weight.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("weight.delete"),
           style: "destructive",
           onPress: async () => {
             try {
               await remove(selectedWeight.date);
-              Alert.alert("Success", "Weight deleted successfully");
+              Alert.alert(
+                t("weight.success"),
+                t("weight.weightDeletedSuccess"),
+              );
               // Adjust selectedIndex if necessary
               if (selectedIndex >= weights.length - 1) {
                 setSelectedIndex(Math.max(0, weights.length - 2));
               }
             } catch {
-              Alert.alert("Error", "Failed to delete weight");
+              Alert.alert(t("weight.error"), t("weight.failedToDeleteWeight"));
             }
           },
         },
@@ -183,7 +188,9 @@ export default function Weight() {
             borderRadius: 8,
           }}
         >
-          <Text style={{ color: "white", fontWeight: "700" }}>Go Back</Text>
+          <Text style={{ color: "white", fontWeight: "700" }}>
+            {t("weight.goBack")}
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -205,14 +212,14 @@ export default function Weight() {
             <Text style={{ fontSize: 25 }}>{"<"}</Text>
           </TouchableOpacity>
           <Text style={{ fontSize: 20, fontWeight: "700", marginLeft: 16 }}>
-            Weight History
+            {t("weight.weightHistory")}
           </Text>
         </View>
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
           <Text style={{ fontSize: 18, marginBottom: 24, color: "#64748b" }}>
-            No weight records yet
+            {t("weight.noRecords")}
           </Text>
           <TouchableOpacity
             onPress={openAddModal}
@@ -224,7 +231,7 @@ export default function Weight() {
             }}
           >
             <Text style={{ color: "white", fontWeight: "700" }}>
-              + Add Weight
+              + {t("weight.addWeight")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -248,9 +255,9 @@ export default function Weight() {
               <Text
                 style={{ fontSize: 20, fontWeight: "700", marginBottom: 16 }}
               >
-                Add Weight
+                {t("weight.addWeight")}
               </Text>
-              <Text style={{ marginBottom: 8 }}>Weight (kg)</Text>
+              <Text style={{ marginBottom: 8 }}>{t("weight.weightKg")}</Text>
               <TextInput
                 style={{
                   borderWidth: 1,
@@ -259,12 +266,12 @@ export default function Weight() {
                   padding: 12,
                   marginBottom: 16,
                 }}
-                placeholder="Enter weight"
+                placeholder={t("weight.enterWeight")}
                 keyboardType="decimal-pad"
                 value={newWeight}
                 onChangeText={setNewWeight}
               />
-              <Text style={{ marginBottom: 8 }}>Date</Text>
+              <Text style={{ marginBottom: 8 }}>{t("weight.date")}</Text>
               <TextInput
                 style={{
                   borderWidth: 1,
@@ -273,7 +280,7 @@ export default function Weight() {
                   padding: 12,
                   marginBottom: 24,
                 }}
-                placeholder="YYYY-MM-DD"
+                placeholder={t("weight.datePlaceholder")}
                 value={newDate}
                 onChangeText={setNewDate}
               />
@@ -296,7 +303,7 @@ export default function Weight() {
                   }}
                 >
                   <Text style={{ textAlign: "center", fontWeight: "600" }}>
-                    Cancel
+                    {t("weight.cancel")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -317,7 +324,7 @@ export default function Weight() {
                       fontWeight: "600",
                     }}
                   >
-                    {submitting ? "Adding..." : "Add"}
+                    {submitting ? t("common.loading") : t("weight.addButton")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -344,7 +351,7 @@ export default function Weight() {
           <Text style={{ fontSize: 25 }}>{"<"}</Text>
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "700", marginLeft: 16 }}>
-          Weight History
+          {t("weight.weightHistory")}
         </Text>
       </View>
 
@@ -358,7 +365,7 @@ export default function Weight() {
         }}
       >
         <Text style={{ fontSize: 28, fontWeight: "700" }}>
-          {selectedValue.toFixed(2)} kg
+          {selectedValue.toFixed(2)} {t("weight.kg")}
         </Text>
       </View>
 
@@ -510,7 +517,7 @@ export default function Weight() {
           }}
         >
           <Text style={{ fontSize: 15, fontWeight: "700", marginBottom: 10 }}>
-            Latest Weight Changes
+            {t("weight.latestWeightChanges")}
           </Text>
 
           <View style={{ flexDirection: "row", gap: 12 }}>
@@ -523,7 +530,7 @@ export default function Weight() {
               }}
             >
               <Text style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
-                Previous
+                {t("weight.previous")}
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 {getDeltaArrow(previousDelta) ? (
@@ -563,7 +570,7 @@ export default function Weight() {
               }}
             >
               <Text style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
-                3 Records Earlier
+                {t("weight.recordsEarlier")}
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 {getDeltaArrow(threeBeforeDelta) ? (
@@ -610,13 +617,17 @@ export default function Weight() {
         }}
       >
         <TouchableOpacity>
-          <Text style={{ fontSize: 16 }}>Change</Text>
+          <Text style={{ fontSize: 16 }}>{t("weight.change")}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={openAddModal}>
-          <Text style={{ fontSize: 16, fontWeight: "700" }}>+ Add Weight</Text>
+          <Text style={{ fontSize: 16, fontWeight: "700" }}>
+            + {t("weight.addWeight")}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleDeleteWeight}>
-          <Text style={{ fontSize: 16, color: "red" }}>Delete</Text>
+          <Text style={{ fontSize: 16, color: "red" }}>
+            {t("weight.delete")}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -639,9 +650,9 @@ export default function Weight() {
             }}
           >
             <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 16 }}>
-              Add Weight
+              {t("weight.addWeight")}
             </Text>
-            <Text style={{ marginBottom: 8 }}>Weight (kg)</Text>
+            <Text style={{ marginBottom: 8 }}>{t("weight.weightKg")}</Text>
             <TextInput
               style={{
                 borderWidth: 1,
@@ -650,12 +661,12 @@ export default function Weight() {
                 padding: 12,
                 marginBottom: 16,
               }}
-              placeholder="Enter weight"
+              placeholder={t("weight.enterWeight")}
               keyboardType="decimal-pad"
               value={newWeight}
               onChangeText={setNewWeight}
             />
-            <Text style={{ marginBottom: 8 }}>Date</Text>
+            <Text style={{ marginBottom: 8 }}>{t("weight.date")}</Text>
             <TextInput
               style={{
                 borderWidth: 1,
@@ -664,7 +675,7 @@ export default function Weight() {
                 padding: 12,
                 marginBottom: 24,
               }}
-              placeholder="YYYY-MM-DD"
+              placeholder={t("weight.datePlaceholder")}
               value={newDate}
               onChangeText={setNewDate}
             />
@@ -684,7 +695,7 @@ export default function Weight() {
                 }}
               >
                 <Text style={{ textAlign: "center", fontWeight: "600" }}>
-                  Cancel
+                  {t("weight.cancel")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -705,7 +716,7 @@ export default function Weight() {
                     fontWeight: "600",
                   }}
                 >
-                  {submitting ? "Adding..." : "Add"}
+                  {submitting ? t("common.loading") : t("weight.addButton")}
                 </Text>
               </TouchableOpacity>
             </View>

@@ -2,6 +2,7 @@ import { getProfile, updateHeight } from "@/api/profile.api";
 import { getStepsHistory } from "@/api/steps.api";
 import { getWeightHistory } from "@/api/weight.api";
 import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/context/I18nContext";
 import { useNutrition } from "@/hooks/useNutrition";
 import { getWeekRange } from "@/utils/week";
 import { router, useFocusEffect } from "expo-router";
@@ -18,6 +19,7 @@ import {
 
 export default function Profile() {
   const { logout } = useAuth();
+  const { t, language, setLanguage } = useI18n();
   const { goals, updateGoals, refresh: refreshNutrition } = useNutrition();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,13 +64,13 @@ export default function Profile() {
       setWeekStepsTotal(weekTotal);
     } catch (error: any) {
       Alert.alert(
-        "Failed to load profile",
-        error?.message ?? "Please try again.",
+        t("errors.failedToLoad"),
+        error?.message ?? t("errors.tryAgain"),
       );
     } finally {
       setLoading(false);
     }
-  }, [refreshNutrition]);
+  }, [refreshNutrition, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,31 +94,31 @@ export default function Profile() {
 
   const bmiLabel = useMemo(() => {
     if (!bmi) {
-      return "Add height and weight to calculate";
+      return t("profile.addHeightAndWeight");
     }
 
     if (bmi < 18.5) {
-      return "Underweight";
+      return t("profile.underweight");
     }
 
     if (bmi < 25) {
-      return "Healthy";
+      return t("profile.normalWeight");
     }
 
     if (bmi < 30) {
-      return "Overweight";
+      return t("profile.overweight");
     }
 
-    return "Obesity";
-  }, [bmi]);
+    return t("profile.obese");
+  }, [bmi, t]);
 
   async function onSaveHeight() {
     const parsed = Number(heightInput.trim());
 
     if (!Number.isInteger(parsed) || parsed < 50 || parsed > 300) {
       Alert.alert(
-        "Invalid height",
-        "Please enter a value between 50 and 300 cm.",
+        t("errors.invalidInput"),
+        t("profile.heightValidationMessage"),
       );
       return;
     }
@@ -126,9 +128,12 @@ export default function Profile() {
     try {
       await updateHeight(parsed);
       setHeightCm(parsed);
-      Alert.alert("Saved", "Your height has been updated.");
+      Alert.alert(t("common.success"), t("profile.heightSavedMessage"));
     } catch (error: any) {
-      Alert.alert("Save failed", error?.message ?? "Please try again.");
+      Alert.alert(
+        t("profile.saveFailed"),
+        error?.message ?? t("errors.tryAgain"),
+      );
     } finally {
       setSaving(false);
     }
@@ -143,7 +148,10 @@ export default function Profile() {
       nextStepsGoal < 1000 ||
       nextStepsGoal > 50000
     ) {
-      Alert.alert("Invalid steps goal", "Use a value from 1000 to 50000.");
+      Alert.alert(
+        t("errors.invalidInput"),
+        t("profile.stepsGoalValidationMessage"),
+      );
       return;
     }
 
@@ -152,7 +160,10 @@ export default function Profile() {
       nextCalorieGoal < 800 ||
       nextCalorieGoal > 6000
     ) {
-      Alert.alert("Invalid calorie goal", "Use a value from 800 to 6000.");
+      Alert.alert(
+        t("errors.invalidInput"),
+        t("profile.calorieGoalValidationMessage"),
+      );
       return;
     }
 
@@ -163,9 +174,12 @@ export default function Profile() {
         stepsGoal: nextStepsGoal,
         calorieGoal: nextCalorieGoal,
       });
-      Alert.alert("Saved", "Daily goals updated.");
+      Alert.alert(t("common.success"), t("profile.goalsSavedMessage"));
     } catch (error: any) {
-      Alert.alert("Save failed", error?.message ?? "Please try again.");
+      Alert.alert(
+        t("profile.saveFailed"),
+        error?.message ?? t("errors.tryAgain"),
+      );
     } finally {
       setSavingGoals(false);
     }
@@ -185,13 +199,13 @@ export default function Profile() {
         }}
       >
         <Text style={{ color: "#cbd5e1", fontSize: 14, marginBottom: 6 }}>
-          Your Profile
+          {t("profile.yourProfile")}
         </Text>
         <Text style={{ color: "white", fontSize: 28, fontWeight: "800" }}>
-          Healthy Lifestyle
+          {t("profile.healthyLifestyle")}
         </Text>
         <Text style={{ color: "#94a3b8", marginTop: 6 }}>
-          Track better habits with consistent data.
+          {t("profile.trackHabits")}
         </Text>
       </View>
 
@@ -208,17 +222,17 @@ export default function Profile() {
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
-              Daily goals
+              {t("profile.dailyGoals")}
             </Text>
             <Text style={{ color: "#64748b", marginBottom: 10 }}>
-              Default steps goal is 8000. Update your targets anytime.
+              {t("profile.dailyGoalsHint")}
             </Text>
 
             <TextInput
               keyboardType="number-pad"
               value={stepsGoalInput}
               onChangeText={setStepsGoalInput}
-              placeholder="Steps goal"
+              placeholder={t("profile.stepsGoal")}
               style={{
                 borderWidth: 1,
                 borderColor: "#cbd5e1",
@@ -234,7 +248,7 @@ export default function Profile() {
               keyboardType="number-pad"
               value={calorieGoalInput}
               onChangeText={setCalorieGoalInput}
-              placeholder="Calorie goal"
+              placeholder={t("profile.calorieGoal")}
               style={{
                 borderWidth: 1,
                 borderColor: "#cbd5e1",
@@ -262,7 +276,7 @@ export default function Profile() {
                   fontWeight: "700",
                 }}
               >
-                {savingGoals ? "Saving..." : "Save Goals"}
+                {savingGoals ? t("profile.saving") : t("profile.saveGoals")}
               </Text>
             </Pressable>
           </View>
@@ -276,17 +290,17 @@ export default function Profile() {
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
-              Height
+              {t("profile.height")}
             </Text>
             <Text style={{ color: "#64748b", marginBottom: 10 }}>
-              Used for BMI calculations and trend insights.
+              {t("profile.heightHint")}
             </Text>
 
             <TextInput
               keyboardType="number-pad"
               value={heightInput}
               onChangeText={setHeightInput}
-              placeholder="Enter height in cm"
+              placeholder={t("profile.heightPlaceholder")}
               style={{
                 borderWidth: 1,
                 borderColor: "#cbd5e1",
@@ -314,7 +328,7 @@ export default function Profile() {
                   fontWeight: "700",
                 }}
               >
-                {saving ? "Saving..." : "Save Height"}
+                {saving ? t("profile.saving") : t("profile.saveHeight")}
               </Text>
             </Pressable>
           </View>
@@ -352,13 +366,13 @@ export default function Profile() {
               }}
             >
               <Text style={{ color: "#64748b", marginBottom: 4 }}>
-                This week
+                {t("profile.thisWeek")}
               </Text>
               <Text style={{ fontSize: 24, fontWeight: "800" }}>
                 {weekStepsTotal.toLocaleString()}
               </Text>
               <Text style={{ color: "#334155", marginTop: 4 }}>
-                steps total
+                {t("profile.stepsTotal")}
               </Text>
             </View>
           </View>
@@ -372,14 +386,54 @@ export default function Profile() {
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
-              Latest weight
+              {t("profile.language")}
             </Text>
-            <Text style={{ fontSize: 26, fontWeight: "800" }}>
-              {latestWeight ? `${latestWeight.toFixed(2)} kg` : "No data yet"}
-            </Text>
-            <Text style={{ color: "#64748b", marginTop: 6 }}>
-              Keep logging to improve your trend accuracy.
-            </Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Pressable
+                onPress={() => setLanguage("en")}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderRadius: 8,
+                  backgroundColor: language === "en" ? "#0ea5e9" : "#e2e8f0",
+                  borderWidth: language === "en" ? 2 : 0,
+                  borderColor: "#0284c7",
+                }}
+              >
+                <Text
+                  style={{
+                    textAlign: "center",
+                    fontWeight: "600",
+                    color: language === "en" ? "white" : "#334155",
+                  }}
+                >
+                  {t("profile.english")}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setLanguage("uk")}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderRadius: 8,
+                  backgroundColor: language === "uk" ? "#0ea5e9" : "#e2e8f0",
+                  borderWidth: language === "uk" ? 2 : 0,
+                  borderColor: "#0284c7",
+                }}
+              >
+                <Text
+                  style={{
+                    textAlign: "center",
+                    fontWeight: "600",
+                    color: language === "uk" ? "white" : "#334155",
+                  }}
+                >
+                  {t("profile.ukrainian")}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </>
       )}
@@ -395,7 +449,7 @@ export default function Profile() {
         <Text
           style={{ color: "white", textAlign: "center", fontWeight: "700" }}
         >
-          Logout
+          {t("common.logout")}
         </Text>
       </Pressable>
     </ScrollView>

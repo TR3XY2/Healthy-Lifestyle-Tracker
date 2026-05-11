@@ -3,6 +3,7 @@ import { getStepsHistory } from "@/api/steps.api";
 import { getWeightHistory } from "@/api/weight.api";
 import { useNutrition } from "@/hooks/useNutrition";
 import { useSync } from "@/hooks/useSync";
+import { useI18n } from "@/context/I18nContext";
 import { getWeekRange } from "@/utils/week";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -29,6 +30,7 @@ const value = {
 export default function Dashboard() {
   const router = useRouter();
   const { goals, todaysTotals, refresh } = useNutrition();
+  const { t } = useI18n();
   useSync();
   const [weights, setWeights] = useState<any[]>([]);
   const [heightCm, setHeightCm] = useState<number | null>(null);
@@ -110,26 +112,27 @@ export default function Dashboard() {
             }}
           >
             <Text style={{ color: "#cbd5e1", marginBottom: 4 }}>
-              Today summary
+              {t("dashboard.todaySummary")}
             </Text>
             <Text style={{ color: "white", fontSize: 28, fontWeight: "800" }}>
-              {calorieLeft} kcal left
+              {calorieLeft} {t("dashboard.kcalLeft")}
             </Text>
             <Text style={{ color: "#cbd5e1", marginTop: 4 }}>
-              Consumed {Math.round(todaysTotals.calories)} · Burned{" "}
-              {todayBurned}
+              {t("dashboard.consumed")} {Math.round(todaysTotals.calories)} ·{" "}
+              {t("dashboard.burned")} {todayBurned}
             </Text>
           </View>
 
           <TouchableOpacity style={card} onPress={() => router.push("/steps")}>
             <Text style={{ fontSize: 18, marginBottom: 8, fontWeight: "700" }}>
-              Steps progress
+              {t("dashboard.stepsProgress")}
             </Text>
             <Text style={value}>
               {todaySteps.toLocaleString()} / {goals.stepsGoal.toLocaleString()}
             </Text>
             <Text style={{ marginTop: 4, color: "#64748b" }}>
-              {stepsLeft.toLocaleString()} steps left · {stepProgress}% complete
+              {stepsLeft.toLocaleString()} {t("dashboard.stepsLeft")} ·{" "}
+              {stepProgress}% {t("dashboard.complete")}
             </Text>
           </TouchableOpacity>
 
@@ -138,48 +141,50 @@ export default function Dashboard() {
             onPress={() => router.push("/nutrition")}
           >
             <Text style={{ fontSize: 18, marginBottom: 8, fontWeight: "700" }}>
-              Nutrition today
+              {t("dashboard.nutritionToday")}
             </Text>
-            <Text style={value}>{Math.round(todaysTotals.calories)} kcal</Text>
+            <Text style={value}>
+              {Math.round(todaysTotals.calories)} {t("dashboard.kcal")}
+            </Text>
             <Text style={{ marginTop: 4, color: "#64748b" }}>
-              Protein {todaysTotals.protein.toFixed(1)}g · Carbs{" "}
-              {todaysTotals.carbs.toFixed(1)}g · Fats{" "}
-              {todaysTotals.fats.toFixed(1)}g
+              {t("dashboard.protein")} {todaysTotals.protein.toFixed(1)}g ·{" "}
+              {t("dashboard.carbs")} {todaysTotals.carbs.toFixed(1)}g ·{" "}
+              {t("dashboard.fats")} {todaysTotals.fats.toFixed(1)}g
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={card} onPress={() => router.push("/weight")}>
             <Text style={{ fontSize: 18, marginBottom: 8, fontWeight: "700" }}>
-              Weight
+              {t("dashboard.weight")}
             </Text>
 
             {latestWeight ? (
               <>
                 <Text style={value}>{latestWeight.weight.toFixed(2)} kg</Text>
                 <Text style={{ marginTop: 4, color: "#64748b" }}>
-                  Latest entry
+                  {t("dashboard.latestEntry")}
                 </Text>
               </>
             ) : (
-              <Text>No data yet</Text>
+              <Text>{t("dashboard.noDataYet")}</Text>
             )}
           </TouchableOpacity>
 
           {/* BMI Card */}
           <TouchableOpacity style={card} onPress={() => router.push("/bmi")}>
             <Text style={{ fontSize: 18, marginBottom: 8, fontWeight: "700" }}>
-              BMI
+              {t("dashboard.bmi")}
             </Text>
 
             {bmi ? (
               <>
                 <Text style={value}>{bmi}</Text>
                 <Text style={{ marginTop: 4, color: "#64748b" }}>
-                  Body Mass Index
+                  {t("dashboard.bodyMassIndex")}
                 </Text>
               </>
             ) : (
-              <Text>Add height to enable BMI</Text>
+              <Text>{t("profile.addHeightToBmi")}</Text>
             )}
           </TouchableOpacity>
         </>

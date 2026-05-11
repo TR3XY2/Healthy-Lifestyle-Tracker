@@ -2,9 +2,11 @@ import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useI18n } from "@/context/I18nContext";
 
 export default function RegisterScreen() {
   const { register } = useAuth();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,7 +18,7 @@ export default function RegisterScreen() {
       router.replace("/(app)/dashboard");
     } catch (e: any) {
       console.log("REGISTER ERROR:", e?.message);
-      Alert.alert("Register failed", e?.message ?? "Unknown error");
+      Alert.alert(t("auth.registerFailed"), e?.message ?? t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -25,18 +27,18 @@ export default function RegisterScreen() {
   return (
     <View style={{ flex: 1, padding: 24, justifyContent: "center" }}>
       <Text style={{ fontSize: 28, fontWeight: "bold", marginBottom: 24 }}>
-        Create account
+        {t("auth.register")}
       </Text>
 
       <TextInput
-        placeholder="Email"
+        placeholder={t("auth.emailPlaceholder")}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         style={inputStyle}
       />
       <TextInput
-        placeholder="Password"
+        placeholder={t("auth.passwordPlaceholder")}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -51,13 +53,13 @@ export default function RegisterScreen() {
         onPress={onRegister}
       >
         <Text style={{ color: "white", textAlign: "center" }}>
-          {loading ? "Creating..." : "Register"}
+          {loading ? t("common.loading") : t("auth.register")}
         </Text>
       </Pressable>
 
       <Pressable onPress={() => router.push("/login")}>
         <Text style={{ textAlign: "center", marginTop: 16 }}>
-          Have an account? Log in
+          {t("auth.alreadyHaveAccount")} {t("auth.login")}
         </Text>
       </Pressable>
     </View>
