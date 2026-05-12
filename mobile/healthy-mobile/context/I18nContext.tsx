@@ -9,7 +9,10 @@ type LanguageCode = "en" | "uk";
 interface I18nContextType {
   language: LanguageCode;
   setLanguage: (lang: LanguageCode) => Promise<void>;
-  t: (key: string, defaultValue?: string) => string;
+  t: (
+    key: string,
+    paramsOrDefaultValue?: Record<string, string | number> | string,
+  ) => string;
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
@@ -65,7 +68,17 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const t = (key: string, defaultValue: string = key): string => {
+  const t = (
+    key: string,
+    paramsOrDefaultValue?: Record<string, string | number> | string,
+  ): string => {
+    const params =
+      paramsOrDefaultValue && typeof paramsOrDefaultValue === "object"
+        ? paramsOrDefaultValue
+        : undefined;
+    const defaultValue =
+      typeof paramsOrDefaultValue === "string" ? paramsOrDefaultValue : key;
+
     const keys = key.split(".");
     let value: any = translations[language];
 
@@ -77,7 +90,18 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    return typeof value === "string" ? value : defaultValue;
+    if (typeof value !== "string") {
+      return defaultValue;
+    }
+
+    if (!params) {
+      return value;
+    }
+
+    return value.replace(/\{\{(\w+)\}\}/g, (_, paramKey: string) => {
+      const paramValue = params[paramKey];
+      return paramValue === undefined ? `{{${paramKey}}}` : String(paramValue);
+    });
   };
 
   if (!isLoaded) {

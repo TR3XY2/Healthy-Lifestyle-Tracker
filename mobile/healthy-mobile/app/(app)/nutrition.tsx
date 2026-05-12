@@ -142,6 +142,10 @@ function isValidDateOnly(value: string) {
 
 export default function NutritionScreen() {
   const { t } = useI18n();
+  const translate = t as (
+    key: string,
+    paramsOrDefaultValue?: Record<string, string | number> | string,
+  ) => string;
   const {
     loading,
     products,
@@ -789,11 +793,23 @@ export default function NutritionScreen() {
                           color={getInsightIconColor(insight.tone)}
                         />
                       </View>
-                      <Text style={styles.insightTitle}>{insight.title}</Text>
+                      <Text style={styles.insightTitle}>
+                        {insight.titleKey
+                          ? translate(insight.titleKey, insight.params ?? {})
+                          : insight.title}
+                      </Text>
                     </View>
-                    <Text style={styles.insightMessage}>{insight.message}</Text>
-                    {insight.action ? (
-                      <Text style={styles.insightAction}>{insight.action}</Text>
+                    <Text style={styles.insightMessage}>
+                      {insight.messageKey
+                        ? translate(insight.messageKey, insight.params ?? {})
+                        : insight.message}
+                    </Text>
+                    {insight.actionKey || insight.action ? (
+                      <Text style={styles.insightAction}>
+                        {insight.actionKey
+                          ? translate(insight.actionKey, insight.params ?? {})
+                          : insight.action}
+                      </Text>
                     ) : null}
                   </View>
                 ))}

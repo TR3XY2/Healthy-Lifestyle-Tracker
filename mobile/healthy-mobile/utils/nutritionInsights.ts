@@ -92,10 +92,9 @@ export function buildSmartInsights({
   if (!selectedHasLogs) {
     insights.push({
       id: "start-day",
-      title: "Start this day with one log",
-      message:
-        "No entries for this date yet. Add one product or meal to unlock deeper insights.",
-      action: "Log your first item for this day",
+      titleKey: "insights.startDay.title",
+      messageKey: "insights.startDay.message",
+      actionKey: "insights.startDay.action",
       tone: "info",
     });
   }
@@ -107,24 +106,31 @@ export function buildSmartInsights({
     if (absPercent <= 0.1) {
       insights.push({
         id: "calorie-goal-on-track",
-        title: "Calories are on track",
-        message: `You are within ${Math.round(absPercent * 100)}% of your daily goal (${Math.round(selectedTotals.calories)} / ${calorieGoal} kcal).`,
+        titleKey: "insights.calorieOnTrack.title",
+        messageKey: "insights.calorieOnTrack.message",
+        params: {
+          percent: Math.round(absPercent * 100),
+          calories: Math.round(selectedTotals.calories),
+          goal: calorieGoal,
+        },
         tone: "positive",
       });
     } else if (difference > 0) {
       insights.push({
         id: "calorie-goal-over",
-        title: "Calories above target",
-        message: `You are ${Math.round(difference)} kcal above your goal. Consider a lighter dinner or snack tomorrow.`,
-        action: "Aim for lower-calorie swaps in the next meal",
+        titleKey: "insights.calorieOver.title",
+        messageKey: "insights.calorieOver.message",
+        actionKey: "insights.calorieOver.action",
+        params: { diff: Math.round(difference) },
         tone: "warning",
       });
     } else {
       insights.push({
         id: "calorie-goal-under",
-        title: "Calories below target",
-        message: `You are ${Math.round(Math.abs(difference))} kcal below your goal. If this is not intentional, add a balanced meal.`,
-        action: "Add a protein + carb snack",
+        titleKey: "insights.calorieUnder.title",
+        messageKey: "insights.calorieUnder.message",
+        actionKey: "insights.calorieUnder.action",
+        params: { diff: Math.round(Math.abs(difference)) },
         tone: "info",
       });
     }
@@ -135,16 +141,21 @@ export function buildSmartInsights({
     if (selectedTotals.protein < proteinTarget * 0.85) {
       insights.push({
         id: "protein-low",
-        title: "Protein is lower than ideal",
-        message: `You logged ${selectedTotals.protein.toFixed(1)}g protein. A good target for your calories is about ${Math.round(proteinTarget)}g.`,
-        action: "Add high-protein foods like yogurt, chicken, eggs, or beans",
+        titleKey: "insights.proteinLow.title",
+        messageKey: "insights.proteinLow.message",
+        actionKey: "insights.proteinLow.action",
+        params: {
+          protein: selectedTotals.protein.toFixed(1),
+          target: Math.round(proteinTarget),
+        },
         tone: "warning",
       });
     } else {
       insights.push({
         id: "protein-good",
-        title: "Protein intake looks solid",
-        message: `Great job: ${selectedTotals.protein.toFixed(1)}g protein logged for this day.`,
+        titleKey: "insights.proteinGood.title",
+        messageKey: "insights.proteinGood.message",
+        params: { protein: selectedTotals.protein.toFixed(1) },
         tone: "positive",
       });
     }
@@ -174,31 +185,41 @@ export function buildSmartInsights({
       if (trendUp) {
         insights.push({
           id: "weekly-trend-up",
-          title: "Weekly calories are trending up",
-          message: `Last 7 days average: ${Math.round(last7AverageCalories)} kcal, which is ${Math.round(Math.abs(trendDelta))}% higher than the previous week.`,
-          action: "Keep an eye on calorie-dense snacks",
+          titleKey: "insights.weeklyTrendUp.title",
+          messageKey: "insights.weeklyTrendUp.message",
+          params: {
+            avg: Math.round(last7AverageCalories),
+            percent: Math.round(Math.abs(trendDelta)),
+          },
+          actionKey: "insights.weeklyTrendUp.action",
           tone: "warning",
         });
       } else if (trendDown) {
         insights.push({
           id: "weekly-trend-down",
-          title: "Weekly calories are trending down",
-          message: `Last 7 days average: ${Math.round(last7AverageCalories)} kcal, down ${Math.round(Math.abs(trendDelta))}% from the previous week.`,
+          titleKey: "insights.weeklyTrendDown.title",
+          messageKey: "insights.weeklyTrendDown.message",
+          params: {
+            avg: Math.round(last7AverageCalories),
+            percent: Math.round(Math.abs(trendDelta)),
+          },
           tone: "positive",
         });
       } else {
         insights.push({
           id: "weekly-trend-stable",
-          title: "Weekly calories are stable",
-          message: `Your 7-day average is ${Math.round(last7AverageCalories)} kcal with only minor week-to-week variation.`,
+          titleKey: "insights.weeklyTrendStable.title",
+          messageKey: "insights.weeklyTrendStable.message",
+          params: { avg: Math.round(last7AverageCalories) },
           tone: "positive",
         });
       }
     } else {
       insights.push({
         id: "weekly-baseline",
-        title: "Weekly baseline is forming",
-        message: `Current 7-day average: ${Math.round(last7AverageCalories)} kcal. Keep logging daily to unlock stronger trend insights.`,
+        titleKey: "insights.weeklyBaseline.title",
+        messageKey: "insights.weeklyBaseline.message",
+        params: { avg: Math.round(last7AverageCalories) },
         tone: "info",
       });
     }
@@ -209,15 +230,17 @@ export function buildSmartInsights({
   if (streak >= 7) {
     insights.push({
       id: "streak-great",
-      title: "Strong logging streak",
-      message: `You have logged nutrition for ${streak} consecutive days.`,
+      titleKey: "insights.streakGreat.title",
+      messageKey: "insights.streakGreat.message",
+      params: { streak },
       tone: "positive",
     });
   } else if (streak >= 3) {
     insights.push({
       id: "streak-building",
-      title: "Consistency is improving",
-      message: `${streak} days in a row logged. Keep this momentum to build more accurate insights.`,
+      titleKey: "insights.streakBuilding.title",
+      messageKey: "insights.streakBuilding.message",
+      params: { streak },
       tone: "info",
     });
   }
@@ -233,9 +256,10 @@ export function buildSmartInsights({
     if (topRatio >= 0.65) {
       insights.push({
         id: "meal-balance",
-        title: "Meal timing is concentrated",
-        message: `${Math.round(topRatio * 100)}% of tagged entries are ${topMealType}. Try distributing calories more evenly across the day.`,
-        action: "Add at least one smaller earlier meal",
+        titleKey: "insights.mealBalance.title",
+        messageKey: "insights.mealBalance.message",
+        actionKey: "insights.mealBalance.action",
+        params: { percent: Math.round(topRatio * 100), topMealType },
         tone: "info",
       });
     }
@@ -244,9 +268,8 @@ export function buildSmartInsights({
   if (insights.length === 0) {
     insights.push({
       id: "fallback",
-      title: "Log more data for smart insights",
-      message:
-        "Add meals and products for a few days to unlock trend and consistency intelligence.",
+      titleKey: "insights.fallback.title",
+      messageKey: "insights.fallback.message",
       tone: "info",
     });
   }

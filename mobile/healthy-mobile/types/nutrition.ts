@@ -60,8 +60,13 @@ export type InsightTone = "positive" | "warning" | "info";
 
 export interface NutritionInsight {
   id: string;
-  title: string;
-  message: string;
+  // Prefer i18n keys when available. Legacy `title`/`message` kept for compatibility.
+  title?: string;
+  message?: string;
   action?: string;
+  titleKey?: string;
+  messageKey?: string;
+  actionKey?: string;
+  params?: Record<string, string | number>;
   tone: InsightTone;
 }

@@ -154,6 +154,76 @@
     "navigationInfo": "Use the buttons to move between days, then tap any product to open the amount picker.",
     "placeMealInfo": "Place the barcode inside the frame. We will find the product and open it for logging."
   },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "steps": "Steps",
+    "nutrition": "Nutrition",
+    "profile": "Profile"
+  },
+  "insights": {
+    "startDay": {
+      "title": "Start this day with one log",
+      "message": "No entries for this date yet. Add one product or meal to unlock deeper insights.",
+      "action": "Log your first item for this day"
+    },
+    "calorieOnTrack": {
+      "title": "Calories are on track",
+      "message": "You are within {{percent}}% of your daily goal ({{calories}} / {{goal}} kcal)."
+    },
+    "calorieOver": {
+      "title": "Calories above target",
+      "message": "You are {{diff}} kcal above your goal. Consider a lighter dinner or snack tomorrow.",
+      "action": "Aim for lower-calorie swaps in the next meal"
+    },
+    "calorieUnder": {
+      "title": "Calories below target",
+      "message": "You are {{diff}} kcal below your goal. If this is not intentional, add a balanced meal.",
+      "action": "Add a protein + carb snack"
+    },
+    "proteinLow": {
+      "title": "Protein is lower than ideal",
+      "message": "You logged {{protein}}g protein. A good target for your calories is about {{target}}g.",
+      "action": "Add high-protein foods like yogurt, chicken, eggs, or beans"
+    },
+    "proteinGood": {
+      "title": "Protein intake looks solid",
+      "message": "Great job: {{protein}}g protein logged for this day."
+    },
+    "weeklyTrendUp": {
+      "title": "Weekly calories are trending up",
+      "message": "Last 7 days average: {{avg}} kcal, which is {{percent}}% higher than the previous week.",
+      "action": "Keep an eye on calorie-dense snacks"
+    },
+    "weeklyTrendDown": {
+      "title": "Weekly calories are trending down",
+      "message": "Last 7 days average: {{avg}} kcal, down {{percent}}% from the previous week."
+    },
+    "weeklyTrendStable": {
+      "title": "Weekly calories are stable",
+      "message": "Your 7-day average is {{avg}} kcal with only minor week-to-week variation."
+    },
+    "weeklyBaseline": {
+      "title": "Weekly baseline is forming",
+      "message": "Current 7-day average: {{avg}} kcal. Keep logging daily to unlock stronger trend insights."
+    },
+    "streakGreat": {
+      "title": "Strong logging streak",
+      "message": "You have logged nutrition for {{streak}} consecutive days."
+    },
+    "streakBuilding": {
+      "title": "Consistency is improving",
+      "message": "{{streak}} days in a row logged. Keep this momentum to build more accurate insights."
+    },
+    "mealBalance": {
+      "title": "Meal timing is concentrated",
+      "message": "{{percent}}% of tagged entries are {{topMealType}}. Try distributing calories more evenly across the day.",
+      "action": "Add at least one smaller earlier meal"
+    },
+    "fallback": {
+      "title": "Log more data for smart insights",
+      "message": "Add meals and products for a few days to unlock trend and consistency intelligence."
+    }
+  },
   "steps": {
     "addSteps": "Add Steps",
     "stepCount": "Step Count",
@@ -227,7 +297,7 @@
     "healthyLifestyle": "Healthy Lifestyle",
     "trackHabits": "Track better habits with consistent data.",
     "dailyGoals": "Daily goals",
-    "dailyGoalsHint": "Default steps goal is 8000. Update your targets anytime.",
+    "dailyGoalsHint": "Default goals: 8,000 steps and 2,000 calories. You can change them at any time.",
     "height": "Height",
     "heightHint": "Used for BMI calculations and trend insights.",
     "heightPlaceholder": "Enter height in cm",
